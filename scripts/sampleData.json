@@ -1,0 +1,52 @@
+[
+  {
+    "symbol": "MNQ",
+    "related_symbol": "QQQ",
+    "bar_time": "2025-11-03T14:30:00Z",
+    "open_volume": 15420,
+    "close_volume": 12350,
+    "delta_volume": 3070,
+    "timeframe": "1m",
+    "source": "NinjaTrader"
+  },
+  {
+    "symbol": "MNQ",
+    "related_symbol": "QQQ",
+    "bar_time": "2025-11-03T14:31:00Z",
+    "open_volume": 18950,
+    "close_volume": 16200,
+    "delta_volume": 2750,
+    "timeframe": "1m",
+    "source": "NinjaTrader"
+  },
+  {
+    "symbol": "MNQ",
+    "related_symbol": "QQQ",
+    "bar_time": "2025-11-03T14:32:00Z",
+    "open_volume": 12100,
+    "close_volume": 14580,
+    "delta_volume": -2480,
+    "timeframe": "1m",
+    "source": "NinjaTrader"
+  },
+  {
+    "symbol": "MNQ",
+    "related_symbol": "QQQ",
+    "bar_time": "2025-11-03T14:33:00Z",
+    "open_volume": 21400,
+    "close_volume": 18900,
+    "delta_volume": 2500,
+    "timeframe": "1m",
+    "source": "NinjaTrader"
+  },
+  {
+    "symbol": "MNQ",
+    "related_symbol": "QQQ",
+    "bar_time": "2025-11-03T14:34:00Z",
+    "open_volume": 9870,
+    "close_volume": 13240,
+    "delta_volume": -3370,
+    "timeframe": "1m",
+    "source": "NinjaTrader"
+  }
+]
