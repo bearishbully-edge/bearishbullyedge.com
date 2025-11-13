@@ -1,92 +1,32 @@
-// pages/api/volume.ts
-// Secure POST endpoint for volume data ingestion from NinjaTrader
+import { NextApiRequest, NextApiResponse } from 'next';
+import { supabase } from '../../lib/supabaseClient';
 
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '../../lib/supabaseAdmin';
-import { validateVolumeBar, validateVolumeBarBatch } from '../../utils/validateVolumeBar';
-
-type SuccessResponse = {
-  success: true;
-  message: string;
-  inserted: number;
-  data?: any;
-};
-
-type ErrorResponse = {
-  success: false;
-  error: string;
-  errors?: string[];
-};
-
-type ApiResponse = SuccessResponse | ErrorResponse;
-
-/**
- * Volume Data Ingestion API
- * POST /api/volume
- * 
- * Accepts single volume bar or array of bars
- * Validates data and inserts into Supabase
- */
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ApiResponse>
-) {
-  // Only allow POST requests
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
-    return res.status(405).json({
-      success: false,
-      error: 'Method not allowed. Use POST.'
-    });
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
   try {
-    const data = req.body;
+    const { symbol, related_symbol, bar_time, open_volume, close_volume, delta_volume, timeframe, source } = req.body;
 
-    // Check if batch insert (array) or single insert
-    const isBatch = Array.isArray(data);
-    
-    // Validate data
-    const validation = isBatch 
-      ? validateVolumeBarBatch(data)
-      : validateVolumeBar(data);
-
-    if (!validation.valid) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        errors: validation.errors
-      });
-    }
-
-    // Insert into Supabase
-    const { data: insertedData, error: insertError } = await supabaseAdmin
+    const { error } = await supabase
       .from('volume_data')
-      .insert(isBatch ? validation.data : [validation.data!])
-      .select();
-
-    if (insertError) {
-      console.error('Supabase insert error:', insertError);
-      return res.status(500).json({
-        success: false,
-        error: 'Database insertion failed',
-        errors: [insertError.message]
+      .insert({
+        symbol: symbol || 'MNQ',
+        related_symbol: related_symbol || 'QQQ',
+        bar_time,
+        open_volume,
+        close_volume,
+        delta_volume,
+        timeframe: timeframe || '1m',
+        source: source || 'NinjaTrader'
       });
-    }
 
-    // Success response
-    return res.status(200).json({
-      success: true,
-      message: `Successfully inserted ${insertedData?.length || 1} volume bar(s)`,
-      inserted: insertedData?.length || 1,
-      data: insertedData
-    });
+    if (error) throw error;
 
+    res.status(200).json({ success: true });
   } catch (error: any) {
-    console.error('API error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      errors: [error.message || 'Unknown error occurred']
-    });
+    console.error('API Error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 }
