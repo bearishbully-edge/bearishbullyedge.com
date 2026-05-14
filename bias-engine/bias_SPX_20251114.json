@@ -1,0 +1,19 @@
+{
+  "symbol": "SPX",
+  "bias": "Bearish",
+  "confidence": 5,
+  "score_raw": -0.11382080976493188,
+  "components": {
+    "price_pct": 0.0006398319889293163,
+    "price_norm": 0.01599443560450043,
+    "volume_last": 59782109.0,
+    "volume_avg": 75203875.0,
+    "volume_norm": -0.4858255692611007,
+    "vix_pct": 0.027499961853027343,
+    "vix_norm": -0.13663977978273958,
+    "pcr": null,
+    "pcr_norm": 0.0,
+    "htf_norm": 0.00720552857012074
+  },
+  "computed_at": "2025-11-14T19:39:20.524057+00:00"
+}

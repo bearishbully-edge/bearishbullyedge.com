@@ -1,0 +1,23 @@
+{
+  "mode": "paper",
+  "defaultMarket": "QQQ",
+  "alternativeMarkets": ["SPY", "DIA", "IWM", "MNQ", "MES", "MYM"],
+  "orderflow_required": true,
+  "veto_window_minutes": 30,
+  "trade_threshold": 0.45,
+  "confidence_threshold": 0.55,
+  "max_daily_drawdown_pct": 0.02,
+  "single_trade_max_pct": 0.01,
+  "base_cash": 100000,
+  "size_scaler": 1.0,
+  "volatility_scaler": {"atr_target": 0.01},
+  "signal_expiry_minutes": 60,
+  "order_retry_attempts": 3,
+  "order_retry_delay_secs": 2,
+  "canary": {
+    "enabled": true,
+    "initial_pct": 0.05,
+    "ramp_steps": [0.25, 0.5, 1.0],
+    "ramp_hours": 24
+  }
+}

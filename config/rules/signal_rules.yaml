@@ -1,0 +1,49 @@
+# signal_rules.yaml
+version: 1.0
+rules:
+  - id: bias_confirm
+    description: "Require daily bias and delta to align"
+    conditions:
+      - type: bias
+        operator: equals
+        value: "{{candidate.side}}"
+        required_confidence: 0.3
+      - type: delta
+        operator: sign_equals
+        value: "{{candidate.side}}"
+        min_magnitude: 0.15
+    weight: 0.22
+
+  - id: cot_confirmation
+    description: "COT trend supports direction"
+    conditions:
+      - type: cot
+        operator: sign_equals
+        value: "{{candidate.side}}"
+        min_zscore: 0.5
+    weight: 0.14
+
+  - id: cycle_timing
+    description: "Entry must fall inside green window"
+    conditions:
+      - type: cycle
+        operator: in_window
+        value: "green"
+    weight: 0.12
+
+  - id: orderflow_check
+    description: "Optional orderflow confirmation"
+    conditions:
+      - type: orderflow
+        operator: confirms
+        window_secs: 30
+    weight: 0.10
+    optional: true
+
+  - id: event_veto
+    description: "Veto if high-impact event near"
+    conditions:
+      - type: econ_event
+        operator: within_minutes
+        value: 30
+    action: veto

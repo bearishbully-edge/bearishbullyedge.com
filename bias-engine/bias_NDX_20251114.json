@@ -1,0 +1,19 @@
+{
+  "symbol": "NDX",
+  "bias": "Neutral",
+  "confidence": 1,
+  "score_raw": -0.03789472135242995,
+  "components": {
+    "price_pct": 0.0018408860490532397,
+    "price_norm": 0.04598968650276312,
+    "volume_last": 54196212.0,
+    "volume_avg": 57392975.0,
+    "volume_norm": -0.12982525417226393,
+    "vix_pct": 0.027499961853027343,
+    "vix_norm": -0.13663977978273958,
+    "pcr": null,
+    "pcr_norm": 0.0,
+    "htf_norm": 0.008339217370096526
+  },
+  "computed_at": "2025-11-14T19:39:43.009255+00:00"
+}

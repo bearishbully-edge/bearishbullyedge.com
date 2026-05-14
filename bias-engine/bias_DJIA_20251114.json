@@ -1,0 +1,19 @@
+{
+  "symbol": "DJIA",
+  "bias": "Neutral",
+  "confidence": 0,
+  "score_raw": -0.0008953161590569388,
+  "components": {
+    "price_pct": -0.005560905306410004,
+    "price_norm": -0.13813385937074682,
+    "volume_last": 7687116.0,
+    "volume_avg": 7015405.0,
+    "volume_norm": 0.19111024014322744,
+    "vix_pct": 0.027499961853027343,
+    "vix_norm": -0.13663977978273958,
+    "pcr": null,
+    "pcr_norm": 0.0,
+    "htf_norm": 0.01049340842660265
+  },
+  "computed_at": "2025-11-14T19:40:05.119398+00:00"
+}

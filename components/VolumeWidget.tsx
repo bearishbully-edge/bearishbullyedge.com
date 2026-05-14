@@ -1,6 +1,4 @@
 // components/VolumeWidget.tsx
-// Real-time volume delta display with sparkline
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -49,16 +47,9 @@ export default function VolumeWidget({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const getTimeCutoff = (): string => {
-    if (timeRange === 'all') return new Date(0).toISOString();
-    const hours = timeRange === '1h' ? 1 : 24;
-    return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-  };
-
   const detectDataMode = (data: VolumeBar[]): { isLive: boolean; source: string } => {
     if (!data.length) return { isLive: false, source: 'no-data' };
     
-    // Method 1: Check source field (most reliable)
     const sourceField = data[0].source?.toLowerCase() || '';
     if (sourceField.includes('playback') || sourceField.includes('historical')) {
       return { isLive: false, source: sourceField };
@@ -67,31 +58,44 @@ export default function VolumeWidget({
       return { isLive: true, source: sourceField };
     }
     
-    // Method 2: Check timestamp age AND market hours
     const latestBar = new Date(data[0].bar_time).getTime();
     const now = Date.now();
     const timeDiff = now - latestBar;
-    
-    // Check if data is recent (within 5 minutes)
     const isRecent = timeDiff < 5 * 60 * 1000;
     
-    // Check if it's market hours (Sunday 6pm - Friday 5pm ET, with daily break)
-    const nowET = new Date(now);
-    const dayOfWeek = nowET.getUTCDay();
-    const hourET = nowET.getUTCHours() - 5; // Convert to ET (simplified)
-    
-    const isMarketHours = 
-      (dayOfWeek === 0 && hourET >= 18) || // Sunday after 6pm
-      (dayOfWeek >= 1 && dayOfWeek <= 4) || // Monday-Thursday
-      (dayOfWeek === 5 && hourET < 17); // Friday before 5pm
-    
-    // Data is live if it's both recent AND during market hours
-    const isLive = isRecent && isMarketHours;
-    
     return { 
-      isLive, 
-      source: isLive ? 'live-detected' : 'playback-detected' 
+      isLive: isRecent, 
+      source: isRecent ? 'live-detected' : 'playback-detected' 
     };
+  };
+
+  const getTimeCutoff = async (): Promise<string> => {
+    if (timeRange === 'all') return new Date(0).toISOString();
+    
+    // For playback data, use relative time from most recent bar
+    const { data: latestData } = await supabase
+      .from('volume_data')
+      .select('bar_time, source')
+      .eq('symbol', symbol)
+      .eq('timeframe', timeframe)
+      .order('bar_time', { ascending: false })
+      .limit(1);
+
+    if (latestData && latestData.length > 0) {
+      const isPlayback = latestData[0].source?.toLowerCase().includes('playback');
+      
+      if (isPlayback) {
+        // Use relative time from the playback session's latest bar
+        const latestBarTime = new Date(latestData[0].bar_time);
+        const hours = timeRange === '1h' ? 1 : 24;
+        const cutoff = new Date(latestBarTime.getTime() - hours * 60 * 60 * 1000);
+        return cutoff.toISOString();
+      }
+    }
+    
+    // For live data, use actual current time
+    const hours = timeRange === '1h' ? 1 : 24;
+    return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   };
 
   const calculateStats = (data: VolumeBar[]): VolumeStats => {
@@ -124,12 +128,14 @@ export default function VolumeWidget({
 
   const fetchVolumeData = async () => {
     try {
+      const cutoff = await getTimeCutoff();
+      
       const { data, error: fetchError } = await supabase
         .from('volume_data')
         .select('bar_time, open_volume, close_volume, delta_volume, source')
         .eq('symbol', symbol)
         .eq('timeframe', timeframe)
-        .gte('bar_time', getTimeCutoff())
+        .gte('bar_time', cutoff)
         .order('bar_time', { ascending: false });
 
       if (fetchError) throw fetchError;

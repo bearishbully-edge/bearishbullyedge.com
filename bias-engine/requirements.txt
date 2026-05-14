@@ -1,0 +1,12 @@
+﻿supabase>=2.9.0
+requests==2.31.0
+python-dotenv==1.0.0
+pandas==2.1.4
+numpy==1.26.2
+yfinance==0.2.35
+httpx>=0.24.0
+pytz==2023.3
+python-dateutil==2.8.2
+beautifulsoup4==4.12.2
+lxml==5.1.0
+pandas_datareader==0.10.0

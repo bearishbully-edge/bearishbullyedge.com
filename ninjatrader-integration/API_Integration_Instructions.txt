@@ -1,0 +1,239 @@
+﻿// Add this to the BearishBullyQuantumPro indicator
+
+#region Variables (add to existing)
+private BearishBullyAPIBridge apiBridge;
+private DateTime lastSnapshotSent = DateTime.MinValue;
+#endregion
+
+#region Properties (add to existing)
+[NinjaScriptProperty]
+[Display(Name = "API Endpoint", Order = 10, GroupName = "API Integration")]
+public string APIEndpoint { get; set; }
+
+[NinjaScriptProperty]
+[Display(Name = "API Key", Order = 11, GroupName = "API Integration")]
+public string APIKey { get; set; }
+
+[NinjaScriptProperty]
+[Range(1, 60)]
+[Display(Name = "Snapshot Interval (seconds)", Order = 12, GroupName = "API Integration")]
+public int SnapshotInterval { get; set; }
+#endregion
+
+#region Initialization (add to State.Configure)
+// In OnStateChange, State.Configure section:
+APIEndpoint = "http://localhost:3000"; // Default to local dev
+SnapshotInterval = 2; // Send snapshot every 2 seconds
+
+// In OnStateChange, State.DataLoaded section:
+apiBridge = new BearishBullyAPIBridge(APIEndpoint, APIKey);
+Print($"✅ API Bridge initialized: {APIEndpoint}");
+#endregion
+
+#region OnBarUpdate (add at end of method)
+// Send periodic snapshots
+if ((DateTime.Now - lastSnapshotSent).TotalSeconds >= SnapshotInterval)
+{
+    SendOrderFlowSnapshot();
+    lastSnapshotSent = DateTime.Now;
+}
+#endregion
+
+#region New Methods (add to class)
+
+private void SendOrderFlowSnapshot()
+{
+    var snapshot = new BearishBullyAPIBridge.OrderFlowSnapshot
+    {
+        Timestamp = DateTime.Now,
+        Instrument = Instrument.FullName,
+        CurrentPrice = Close[0],
+        Footprint = GetFootprintSnapshot(),
+        ActivePatterns = GetPatternsSnapshot(),
+        LargeOrders = GetLargeOrdersSnapshot(),
+        Performance = GetPerformanceSnapshot(),
+        Delta = CalculateDeltaMetrics()
+    };
+
+    Task.Run(() => apiBridge.SendOrderFlowSnapshot(snapshot));
+}
+
+private BearishBullyAPIBridge.FootprintData[] GetFootprintSnapshot()
+{
+    lock (dataLock)
+    {
+        return footprintData
+            .OrderByDescending(x => x.Key)
+            .Take(50)
+            .Select(kvp => new BearishBullyAPIBridge.FootprintData
+            {
+                Price = kvp.Key,
+                BidVolume = kvp.Value.BidVolume,
+                AskVolume = kvp.Value.AskVolume,
+                TotalVolume = kvp.Value.TotalVolume,
+                Delta = kvp.Value.Delta,
+                ImbalanceRatio = kvp.Value.TotalVolume > 0 
+                    ? Math.Abs(kvp.Value.Delta) / (double)kvp.Value.TotalVolume 
+                    : 0
+            })
+            .ToArray();
+    }
+}
+
+private BearishBullyAPIBridge.PatternData[] GetPatternsSnapshot()
+{
+    lock (activePatterns)
+    {
+        return activePatterns
+            .Where(p => (DateTime.Now - p.DetectedTime).TotalMinutes < 30)
+            .Select(p => new BearishBullyAPIBridge.PatternData
+            {
+                Type = p.Type.ToString(),
+                Confidence = p.Confidence,
+                PriceLevel = p.PriceLevel,
+                Signal = p.Signal.ToString(),
+                DetectedTime = p.DetectedTime
+            })
+            .ToArray();
+    }
+}
+
+private BearishBullyAPIBridge.LargeOrderData[] GetLargeOrdersSnapshot()
+{
+    lock (largeOrders)
+    {
+        return largeOrders.Values
+            .Where(o => (DateTime.Now - o.Time).TotalMinutes < 30)
+            .Select(o => new BearishBullyAPIBridge.LargeOrderData
+            {
+                Id = o.Id,
+                Price = o.Price,
+                Volume = o.Volume,
+                Time = o.Time,
+                Direction = o.IsBuy ? "BUY" : "SELL",
+                Confidence = o.Confidence
+            })
+            .ToArray();
+    }
+}
+
+private BearishBullyAPIBridge.PerformanceData GetPerformanceSnapshot()
+{
+    return new BearishBullyAPIBridge.PerformanceData
+    {
+        RenderTimeMs = metrics.RenderTimeMs,
+        CalcTimeMs = metrics.CalculationTimeMs,
+        QueuedTicks = metrics.QueuedTicks,
+        ActivePatterns = metrics.ActivePatterns,
+        PriceLevels = footprintData.Count
+    };
+}
+
+private BearishBullyAPIBridge.DeltaMetrics CalculateDeltaMetrics()
+{
+    double cumDelta = 0;
+    double maxDelta = double.MinValue;
+    double minDelta = double.MaxValue;
+
+    lock (dataLock)
+    {
+        foreach (var level in footprintData.Values)
+        {
+            cumDelta += level.Delta;
+            maxDelta = Math.Max(maxDelta, level.Delta);
+            minDelta = Math.Min(minDelta, level.Delta);
+        }
+    }
+
+    long totalVolume = footprintData.Values.Sum(l => l.TotalVolume);
+    double deltaPercentage = totalVolume > 0 ? (cumDelta / totalVolume) * 100 : 0;
+
+    return new BearishBullyAPIBridge.DeltaMetrics
+    {
+        CumulativeDelta = cumDelta,
+        DeltaPercentage = deltaPercentage,
+        MaxDelta = maxDelta == double.MinValue ? 0 : maxDelta,
+        MinDelta = minDelta == double.MaxValue ? 0 : minDelta
+    };
+}
+
+// Update DetectLargeOrder method to send alerts
+private void DetectLargeOrder(TickData tick)
+{
+    var order = new LargeOrder
+    {
+        Id = tick.Time.Ticks,
+        Price = tick.Price,
+        Volume = tick.Volume,
+        Time = tick.Time,
+        IsBuy = tick.IsBid,
+        Confidence = Math.Min(1.0, tick.Volume / (LargeOrderThreshold * 2.0))
+    };
+
+    lock (largeOrders)
+    {
+        largeOrders[order.Id] = order;
+    }
+
+    // Send API alert
+    var alertData = new BearishBullyAPIBridge.LargeOrderData
+    {
+        Id = order.Id,
+        Price = order.Price,
+        Volume = order.Volume,
+        Time = order.Time,
+        Direction = order.IsBuy ? "BUY" : "SELL",
+        Confidence = order.Confidence
+    };
+    Task.Run(() => apiBridge.SendLargeOrderAlert(alertData));
+
+    if (order.Volume > LargeOrderThreshold * 2)
+    {
+        PlaySound(@"Alert2.wav");
+        Draw.ArrowUp(this, "LO_" + order.Id, false, 0, order.Price - (10 * TickSize), Brushes.Yellow);
+    }
+}
+
+// Update DetectPatterns method to send alerts
+private void DetectPatterns(TickData tick)
+{
+    double priceLevel = Math.Round(tick.Price / TickSize) * TickSize;
+    
+    if (footprintData.ContainsKey(priceLevel))
+    {
+        var level = footprintData[priceLevel];
+        
+        if (level.TotalVolume > Volume[0] * 1.5 && Math.Abs(level.Delta) < level.TotalVolume * 0.3)
+        {
+            var pattern = new DetectedPattern
+            {
+                Type = PatternType.Absorption,
+                Confidence = 0.85,
+                PriceLevel = priceLevel,
+                Signal = level.Delta > 0 ? SignalType.Bullish : SignalType.Bearish,
+                DetectedTime = Time[0]
+            };
+
+            lock (activePatterns)
+            {
+                activePatterns.Add(pattern);
+            }
+
+            // Send API alert
+            var alertData = new BearishBullyAPIBridge.PatternData
+            {
+                Type = pattern.Type.ToString(),
+                Confidence = pattern.Confidence,
+                PriceLevel = pattern.PriceLevel,
+                Signal = pattern.Signal.ToString(),
+                DetectedTime = pattern.DetectedTime
+            };
+            Task.Run(() => apiBridge.SendPatternAlert(alertData));
+
+            Draw.Diamond(this, "PAT_" + pattern.DetectedTime.Ticks, false, 0, priceLevel, 
+                pattern.Signal == SignalType.Bullish ? Brushes.LimeGreen : Brushes.Red);
+        }
+    }
+}
+
+#endregion

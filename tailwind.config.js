@@ -8,9 +8,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'terminal-bg': '#0d1117',
-        'terminal-panel': '#161b22',
-        'terminal-border': '#30363d',
+        border: "hsl(var(--border))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
       },
     },
   },

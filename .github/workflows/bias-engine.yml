@@ -1,0 +1,54 @@
+﻿name: Daily Bias Engine
+
+on:
+  schedule:
+    # Runs at 11:30 UTC = 06:30 EST (Mon-Fri)
+    # Adjust for DST: 10:30 UTC = 06:30 EDT
+    - cron: '30 11 * * 1-5'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  run-bias-engine:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('bias-engine/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Install dependencies
+        working-directory: bias-engine
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run Bias Engine
+        working-directory: bias-engine
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PCR_API_URL: ${{ secrets.PCR_API_URL }}
+          TZ: America/New_York
+        run: |
+          python bias_engine.py
+      
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: bias-engine-logs
+          path: bias-engine/*.log
