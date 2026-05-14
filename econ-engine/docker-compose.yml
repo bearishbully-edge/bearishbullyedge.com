@@ -1,0 +1,25 @@
+﻿version: "3.9"
+services:
+  econ-engine:
+    build: .
+    container_name: econ-engine
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POLL_INTERVAL: ${POLL_INTERVAL:-300}
+      TZ: ${TZ:-America/New_York}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      HEALTH_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./app:/app
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

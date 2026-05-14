@@ -1,0 +1,31 @@
+﻿[Unit]
+Description=BearishBully Economic Calendar Engine
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=appuser
+Group=appuser
+WorkingDirectory=/opt/bearishbully/econ-engine/app
+Environment="PATH=/opt/bearishbully/econ-engine/venv/bin:/usr/local/bin:/usr/bin"
+EnvironmentFile=/opt/bearishbully/econ-engine/.env
+
+ExecStart=/opt/bearishbully/econ-engine/venv/bin/python main.py
+
+Restart=always
+RestartSec=10
+StartLimitInterval=0
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/bearishbully/econ-engine/app
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=econ-engine
+
+[Install]
+WantedBy=multi-user.target
