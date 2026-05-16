@@ -1,80 +1,189 @@
 // app/api/webhook/route.ts
-import Stripe from 'stripe';
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 
-// IMPORTANT
-// app/api/webhook/route.ts (top of file)
+export const dynamic = 'force-dynamic';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string);
+type StripeSubscription = Stripe.Subscription & {
+  metadata: {
+    user_id?: string;
+  };
+};
 
-async function buffer(readable: any) {
-  const chunks = [];
-  for await (const chunk of readable) chunks.push(chunk);
-  return Buffer.concat(chunks);
+function getLicenseTierFromPrice(priceId: string): string {
+  if (priceId === 'price_terminal_starter') return 'edge_starter';
+  if (priceId === 'price_terminal_pro') return 'edge_pro';
+  if (priceId === 'price_terminal_institutional') return 'edge_institutional';
+  if (priceId === 'price_signal_trader') return 'signal_trader';
+  if (priceId === 'price_ultimate') return 'ultimate';
+
+  return 'none';
+}
+
+function getServerEnv() {
+  return {
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseServiceRoleKey:
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE,
+  };
 }
 
 export async function POST(req: Request) {
-  const rawBody = await buffer(req.body);
-  const sig = req.headers.get('stripe-signature') as string;
+  const {
+    stripeSecretKey,
+    stripeWebhookSecret,
+    supabaseUrl,
+    supabaseServiceRoleKey,
+  } = getServerEnv();
 
-  let event;
+  if (
+    !stripeSecretKey ||
+    !stripeWebhookSecret ||
+    !supabaseUrl ||
+    !supabaseServiceRoleKey
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'webhook_not_configured',
+        message: 'Webhook environment variables are not configured.',
+      },
+      { status: 503 },
+    );
+  }
+
+  const signature = req.headers.get('stripe-signature');
+
+  if (!signature) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'missing_stripe_signature',
+      },
+      { status: 400 },
+    );
+  }
+
+  const stripe = new Stripe(stripeSecretKey, {
+    apiVersion: '2025-10-29.clover',
+  });
+
+  const rawBody = await req.text();
+
+  let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(
       rawBody,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      signature,
+      stripeWebhookSecret,
     );
-  } catch (err: any) {
-    return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Invalid webhook signature';
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'invalid_webhook_signature',
+        message,
+      },
+      { status: 400 },
+    );
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE!
-  );
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-  // 🔥 Handle subscription lifecycle
   switch (event.type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
-      const subscription = event.data.object;
-
+      const subscription = event.data.object as StripeSubscription;
       const userId = subscription.metadata.user_id;
-      const priceId = subscription.items.data[0].price.id;
+      const priceId = subscription.items.data[0]?.price.id;
 
-      let tier = 'NONE';
+      if (!userId || !priceId) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'missing_subscription_metadata',
+          },
+          { status: 400 },
+        );
+      }
 
-      if (priceId === 'price_terminal_starter') tier = 'EDGE_STARTER';
-      if (priceId === 'price_terminal_pro') tier = 'EDGE_PRO';
-      if (priceId === 'price_terminal_institutional') tier = 'EDGE_INSTITUTIONAL';
-      if (priceId === 'price_signal_trader') tier = 'SIGNAL_TRADER';
-      if (priceId === 'price_ultimate') tier = 'ULTIMATE';
+      const tier = getLicenseTierFromPrice(priceId);
 
-      await supabase
+      const { error } = await supabase
         .from('profiles')
         .update({
           license_tier: tier,
+          subscription_status: subscription.status,
           updated_at: new Date().toISOString(),
         })
         .eq('id', userId);
+
+      if (error) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'supabase_update_failed',
+            message: error.message,
+          },
+          { status: 500 },
+        );
+      }
 
       break;
     }
 
     case 'customer.subscription.deleted': {
-      const subscription = event.data.object;
+      const subscription = event.data.object as StripeSubscription;
       const userId = subscription.metadata.user_id;
 
-      await supabase
+      if (!userId) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'missing_subscription_metadata',
+          },
+          { status: 400 },
+        );
+      }
+
+      const { error } = await supabase
         .from('profiles')
-        .update({ license_tier: 'NONE' })
+        .update({
+          license_tier: 'none',
+          subscription_status: 'cancelled',
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', userId);
+
+      if (error) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'supabase_update_failed',
+            message: error.message,
+          },
+          { status: 500 },
+        );
+      }
 
       break;
     }
+
+    default:
+      break;
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json({
+    ok: true,
+    received: true,
+  });
 }
