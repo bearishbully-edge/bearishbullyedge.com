@@ -25,10 +25,17 @@ export default function Dashboard() {
   }, []);
 
   const checkUser = async () => {
-    setUser({
-      email: 'dev@bearishbully.local'
-    });
+    const {
+      data: { session },
+      error,
+    } = await supabase.auth.getSession();
 
+    if (error || !session?.user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    setUser(session.user);
     setLoading(false);
   };
 
