@@ -1,132 +1,138 @@
 // lib/automation/tradeExecutor.ts
 'use client';
-// @ts-nocheck
 
 import { EventEmitter } from 'events';
 import type {
   ExecutorConfig,
-  TradeSignal,
-  Position,
   ExecutorStats,
+  Position,
+  TradeSignal,
 } from './types';
 
+type ExecutionBlockReason =
+  | 'invalid_signal'
+  | 'live_mode_not_supported'
+  | 'daily_limit'
+  | 'max_positions'
+  | 'capital_exhausted'
+  | 'duplicate_signal'
+  | 'kill_switch_enabled';
+
+type ExecutionEvent = {
+  reason: ExecutionBlockReason;
+  signal?: TradeSignal;
+  details?: string;
+};
+
 export class TradeExecutor extends EventEmitter {
-  private config: ExecutorConfig;
-  private positions: Map<string, Position> = new Map();
+  private readonly config: ExecutorConfig;
+  private readonly positions: Map<string, Position> = new Map();
+  private readonly executedSignalIds: Set<string> = new Set();
+
   private pnl = 0;
   private capitalUsed = 0;
-  private maxCapital = 100000;
+  private maxCapital = 100_000;
   private dailyTrades = 0;
+  private killSwitchEnabled = false;
 
   constructor(config: ExecutorConfig) {
     super();
     this.config = config;
   }
 
+  setKillSwitch(enabled: boolean): void {
+    this.killSwitchEnabled = enabled;
+    this.emit('kill_switch_changed', { enabled });
+  }
+
   async executeSignal(signal: TradeSignal): Promise<boolean> {
-    if (!signal || !signal.side || !signal.entry_price || !signal.stop_price) {
-      this.emit('execution_blocked', {
-        reason: 'invalid_signal',
-        signal,
+    const blockReason = this.validateSignal(signal);
+
+    if (blockReason) {
+      this.emitBlocked(blockReason, signal);
+      return false;
+    }
+
+    if (this.config.mode !== 'paper') {
+      this.emitBlocked('live_mode_not_supported', signal, {
+        details:
+          'Live execution must go through a broker adapter and server-side risk engine.',
       });
       return false;
     }
 
-    if (this.dailyTrades >= this.config.position_limits.max_daily_trades) {
-      this.emit('execution_blocked', { reason: 'daily_limit' });
+    if (this.killSwitchEnabled) {
+      this.emitBlocked('kill_switch_enabled', signal);
       return false;
     }
 
-    if (this.positions.size >= this.config.position_limits.max_positions) {
-      this.emit('execution_blocked', { reason: 'max_positions' });
+    if (this.executedSignalIds.has(signal.id)) {
+      this.emitBlocked('duplicate_signal', signal);
       return false;
     }
 
-    const notional = Math.min(
-      this.config.position_limits.max_position_size_usd,
-      this.maxCapital * 0.02
-    );
+    if (this.dailyTrades >= this.config.riskRules.maxDailyTrades) {
+      this.emitBlocked('daily_limit', signal);
+      return false;
+    }
+
+    if (this.positions.size >= this.config.riskRules.maxOpenPositions) {
+      this.emitBlocked('max_positions', signal);
+      return false;
+    }
+
+    const notional = this.calculateNotional();
 
     if (this.capitalUsed + notional > this.maxCapital) {
-      this.emit('execution_blocked', { reason: 'capital_exhausted' });
+      this.emitBlocked('capital_exhausted', signal);
       return false;
     }
 
-    const id = `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const opened_at = Date.now();
+    const position = this.createPaperPosition(signal, notional);
 
-    const pos: Position = {
-      id,
-      signal_id: signal.id,
-      market: signal.market,
-      side: signal.side,
-      entry_price: signal.entry_price,
-      stop_price: signal.stop_price,
-      target_price: signal.target_price,
-      size_usd: notional,
-      opened_at,
-      status: 'open',
-    };
-
-    this.positions.set(id, pos);
+    this.positions.set(position.id, position);
+    this.executedSignalIds.add(signal.id);
     this.capitalUsed += notional;
     this.dailyTrades += 1;
 
-    this.emit('order_filled', {
-      order_id: id,
-      position: pos,
+    this.emit('paper_order_filled', {
+      orderId: position.id,
+      position,
       mode: this.config.mode,
+      signalId: signal.id,
     });
 
-    this.simulateLifecycle(pos);
     return true;
   }
 
-  private simulateLifecycle(pos: Position) {
-    const holdMs = 5000 + Math.random() * 15000; // 5–20s
+  closePaperPosition(id: string, exitPrice: number): boolean {
+    const position = this.positions.get(id);
 
-    setTimeout(() => {
-      if (!this.positions.has(pos.id)) return;
+    if (!position || position.status !== 'open') {
+      return false;
+    }
 
-      const isWin = Math.random() > 0.45;
-      const rMult = isWin
-        ? 1 + Math.random() * 1.5 // 1–2.5R
-        : -0.5 - Math.random() * 0.8; // -0.5 to -1.3R
+    const pnl = this.calculatePnl(position, exitPrice);
 
-      const priceMove = (pos.target_price - pos.entry_price) * rMult;
-      const finalPrice =
-        pos.side === 'long'
-          ? pos.entry_price + priceMove
-          : pos.entry_price - priceMove;
-
-      const movePct = (finalPrice - pos.entry_price) / pos.entry_price;
-      const pnl =
-        pos.side === 'long'
-          ? pos.size_usd * movePct
-          : pos.size_usd * -movePct;
-
-      this.closePosition(pos.id, finalPrice, pnl);
-    }, holdMs);
-  }
-
-  private closePosition(id: string, exitPrice: number, pnl: number) {
-    const pos = this.positions.get(id);
-    if (!pos) return;
-
-    pos.status = 'closed';
-    pos.closed_at = Date.now();
-    pos.pnl = pnl;
+    const closedPosition: Position = {
+      ...position,
+      status: 'closed',
+      closedAt: Date.now(),
+      pnl,
+    };
 
     this.positions.delete(id);
-    this.capitalUsed = Math.max(0, this.capitalUsed - pos.size_usd);
+    this.capitalUsed = Math.max(0, this.capitalUsed - (position.sizeUsd ?? 0));
     this.pnl += pnl;
 
-    this.emit('position_closed', {
-      order_id: id,
-      position: pos,
-      exit_price: exitPrice,
+    this.emit('paper_position_closed', {
+      orderId: id,
+      position: closedPosition,
+      exitPrice,
       pnl,
     });
+
+    return true;
   }
 
   getStats(): ExecutorStats {
@@ -135,12 +141,84 @@ export class TradeExecutor extends EventEmitter {
       dailyTrades: this.dailyTrades,
       openPositions: this.positions.size,
       capitalUsed: this.capitalUsed,
-      capitalAvailable: this.maxCapital - this.capitalUsed,
+      capitalAvailable: Math.max(0, this.maxCapital - this.capitalUsed),
     };
   }
 
   getPositions(): Position[] {
     return Array.from(this.positions.values());
+  }
+
+  private validateSignal(signal: TradeSignal | null | undefined): ExecutionBlockReason | null {
+    if (!signal) return 'invalid_signal';
+
+    if (!signal.id) return 'invalid_signal';
+    if (signal.side !== 'long' && signal.side !== 'short') return 'invalid_signal';
+    if (typeof signal.entryPrice !== 'number' || signal.entryPrice <= 0) {
+      return 'invalid_signal';
+    }
+    if (typeof signal.stopPrice !== 'number' || signal.stopPrice <= 0) {
+      return 'invalid_signal';
+    }
+    if (typeof signal.targetPrice !== 'number' || signal.targetPrice <= 0) {
+      return 'invalid_signal';
+    }
+
+    return null;
+  }
+
+  private calculateNotional(): number {
+    return Math.min(
+      this.config.riskRules.maxPositionSizeUsd,
+      this.maxCapital * 0.02,
+    );
+  }
+
+  private createPaperPosition(signal: TradeSignal, notional: number): Position {
+    const now = Date.now();
+
+    return {
+      id: `PAPER-${now}-${Math.random().toString(36).slice(2, 7)}`,
+      signalId: signal.id,
+      market: signal.market,
+      side: signal.side,
+      entryPrice: signal.entryPrice,
+      stopPrice: signal.stopPrice,
+      targetPrice: signal.targetPrice,
+      sizeUsd: notional,
+      openedAt: now,
+      status: 'open',
+      metadata: {
+        strategyId: signal.strategyId,
+        confidence: signal.confidence,
+        score: signal.score,
+        mode: 'paper',
+      },
+    };
+  }
+
+  private calculatePnl(position: Position, exitPrice: number): number {
+    if (!position.sizeUsd || position.entryPrice <= 0) return 0;
+
+    const movePct = (exitPrice - position.entryPrice) / position.entryPrice;
+
+    return position.side === 'long'
+      ? position.sizeUsd * movePct
+      : position.sizeUsd * -movePct;
+  }
+
+  private emitBlocked(
+    reason: ExecutionBlockReason,
+    signal?: TradeSignal,
+    extra?: Pick<ExecutionEvent, 'details'>,
+  ): void {
+    const event: ExecutionEvent = {
+      reason,
+      signal,
+      details: extra?.details,
+    };
+
+    this.emit('execution_blocked', event);
   }
 }
 

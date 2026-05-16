@@ -1,5 +1,5 @@
 // lib/backtest/backtestEngine.ts
-// Pure engine: no React, no UI
+// Pure engine: no React, no UI.
 
 import { SignalAggregator } from '../automation/signalAggregator';
 import type {
@@ -26,13 +26,6 @@ interface BacktestEngineOptions {
   >;
 }
 
-/**
- * BacktestEngine:
- *  - Replays candles
- *  - Synthesizes indicator signals (Bias / Delta / COT / Orderflow / Econ)
- *  - Feeds them into SignalAggregator
- *  - Builds trades with deterministic risk logic
- */
 export class BacktestEngine {
   private candles: BacktestCandle[];
   private strategyId: BacktestStrategyId;
@@ -55,12 +48,18 @@ export class BacktestEngine {
       symbol: opts.riskConfig.symbol,
     };
 
-    this.agg = new SignalAggregator(this.config, []);
+    this.agg = new SignalAggregator(this.config);
 
     this.agg.on('signal', (signal: TradeSignal) => {
       this.lastSignal = signal;
       this.openFromSignal(signal);
     });
+
+    this.agg.setEnabled(true);
+  }
+
+  private getSymbol(): string {
+    return this.config.symbol || 'MNQ';
   }
 
   private synthIndicators(
@@ -68,23 +67,25 @@ export class BacktestEngine {
     candle: BacktestCandle,
   ): IndicatorSignal[] {
     const prev = this.candles[idx - 1];
+    const symbol = this.getSymbol();
 
-    // --- Bias: trend / momentum
     const direction =
       !prev || candle.close === prev.close
         ? 'neutral'
         : candle.close > prev.close
-        ? 'bullish'
-        : 'bearish';
+          ? 'bullish'
+          : 'bearish';
 
     const changePct =
       prev && prev.close > 0
         ? Math.abs(candle.close - prev.close) / prev.close
         : 0;
 
-    const biasConfidence = Math.min(changePct * 20, 1); // 0–5% move maps to 0–1
+    const biasConfidence = Math.min(changePct * 20, 1);
 
     const bias: IndicatorSignal = {
+      source: 'backtest',
+      symbol,
       name: 'bias',
       value: {
         direction,
@@ -94,8 +95,8 @@ export class BacktestEngine {
       timestamp: candle.timestamp,
     };
 
-    // --- Delta: use provided delta or volume + price direction
     let rawDelta = 0;
+
     if (typeof candle.delta === 'number') {
       rawDelta = candle.delta;
     } else if (typeof candle.volume === 'number') {
@@ -103,12 +104,15 @@ export class BacktestEngine {
         candle.close > candle.open
           ? 1
           : candle.close < candle.open
-          ? -1
-          : 0;
+            ? -1
+            : 0;
+
       rawDelta = sign * candle.volume;
     }
 
     const delta: IndicatorSignal = {
+      source: 'backtest',
+      symbol,
       name: 'delta',
       value: {
         value: rawDelta,
@@ -118,16 +122,18 @@ export class BacktestEngine {
       timestamp: candle.timestamp,
     };
 
-    // --- COT: synthetic from higher timeframe momentum (very rough)
     const lookback = Math.max(0, idx - 50);
     const sample = this.candles.slice(lookback, idx + 1);
     const first = sample[0]?.close ?? candle.close;
     const last = sample[sample.length - 1]?.close ?? candle.close;
-    const trendPct =
-      first > 0 ? (last - first) / first : 0;
+    const trendPct = first > 0 ? (last - first) / first : 0;
+
     const commercials = trendPct < 0 ? 60_000 : 40_000;
     const largeFunds = 100_000 - commercials;
+
     const cot: IndicatorSignal = {
+      source: 'backtest',
+      symbol,
       name: 'cot',
       value: {
         commercials,
@@ -138,16 +144,18 @@ export class BacktestEngine {
       timestamp: candle.timestamp,
     };
 
-    // --- Orderflow: large body & volume = aggression
     const body = Math.abs(candle.close - candle.open);
     const range = candle.high - candle.low || 1;
     const bodyPct = body / range;
     const bigBody = bodyPct > 0.6;
+
     const imbalance =
       rawDelta ||
       (candle.close > candle.open ? range * 0.5 : -range * 0.5);
 
     const orderflow: IndicatorSignal = {
+      source: 'backtest',
+      symbol,
       name: 'orderflow',
       value: {
         absorption: bigBody && Math.abs(imbalance) < range * 0.3,
@@ -158,8 +166,9 @@ export class BacktestEngine {
       timestamp: candle.timestamp,
     };
 
-    // --- Econ: flat calm for now
     const econ: IndicatorSignal = {
+      source: 'backtest',
+      symbol,
       name: 'econ',
       value: {
         nextEvent: '',
@@ -173,12 +182,12 @@ export class BacktestEngine {
     return [bias, delta, cot, orderflow, econ];
   }
 
-  private openFromSignal(signal: TradeSignal) {
-    const lastCandle =
-      this.candles[this.candles.length - 1];
+  private openFromSignal(signal: TradeSignal): void {
+    const lastCandle = this.candles[this.candles.length - 1];
     if (!lastCandle) return;
 
     const entryPrice = lastCandle.close;
+
     const stopPrice =
       signal.side === 'long'
         ? entryPrice * (1 - this.config.stopLossPct)
@@ -189,17 +198,15 @@ export class BacktestEngine {
         ? entryPrice * (1 + this.config.takeProfitPct)
         : entryPrice * (1 - this.config.takeProfitPct);
 
-    const sizeUsd = this.startingEquity * 0.01; // 1% notional per trade
+    const sizeUsd = this.startingEquity * 0.01;
 
     const pos: BacktestPosition = {
-      id: `BT-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 7)}`,
+      id: `BT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       signal: {
         ...signal,
-        entry_price: entryPrice,
-        stop_price: stopPrice,
-        target_price: targetPrice,
+        entryPrice,
+        stopPrice,
+        targetPrice,
       },
       side: signal.side,
       entryIndex: this.candles.length - 1,
@@ -213,45 +220,40 @@ export class BacktestEngine {
     this.openPositions.push(pos);
   }
 
-  private updateOpenPositions(idx: number) {
+  private updateOpenPositions(idx: number): void {
     const candle = this.candles[idx];
     if (!candle) return;
-    const { high, low, close, timestamp } = candle;
 
+    const { high, low, close, timestamp } = candle;
     const stillOpen: BacktestPosition[] = [];
 
     for (const pos of this.openPositions) {
-      const stop = pos.signal.stop_price;
-      const target = pos.signal.target_price;
+      const stop = pos.signal.stopPrice;
+      const target = pos.signal.targetPrice;
+
+      if (typeof stop !== 'number' || typeof target !== 'number') {
+        stillOpen.push(pos);
+        continue;
+      }
 
       let exitPrice: number | null = null;
-      let hitStop = false;
-      let hitTarget = false;
 
       if (pos.side === 'long') {
         if (low <= stop) {
           exitPrice = stop;
-          hitStop = true;
         } else if (high >= target) {
           exitPrice = target;
-          hitTarget = true;
         }
       } else {
-        // short
         if (high >= stop) {
           exitPrice = stop;
-          hitStop = true;
         } else if (low <= target) {
           exitPrice = target;
-          hitTarget = true;
         }
       }
 
-      if (exitPrice == null) {
-        // Not hit yet; if last bar, close at close
-        if (idx === this.candles.length - 1) {
-          exitPrice = close;
-        }
+      if (exitPrice == null && idx === this.candles.length - 1) {
+        exitPrice = close;
       }
 
       if (exitPrice == null) {
@@ -259,8 +261,8 @@ export class BacktestEngine {
         continue;
       }
 
-      const movePct =
-        (exitPrice - pos.entryPrice) / pos.entryPrice;
+      const movePct = (exitPrice - pos.entryPrice) / pos.entryPrice;
+
       const pnl =
         pos.side === 'long'
           ? pos.sizeUsd * movePct
@@ -296,32 +298,27 @@ export class BacktestEngine {
       });
     }
 
-    // Reset state
     this.trades = [];
     this.openPositions = [];
     this.lastSignal = null;
 
-    // Replay candles
     for (let i = 0; i < this.candles.length; i++) {
-      const c = this.candles[i];
+      const candle = this.candles[i];
+      if (!candle) continue;
 
-      // 1) Update indicator signals
-      const indicators = this.synthIndicators(i, c);
-      for (const sig of indicators) {
-        this.agg.ingestIndicator(sig);
+      const indicators = this.synthIndicators(i, candle);
+
+      for (const signal of indicators) {
+        this.agg.ingestIndicator(signal);
       }
 
-      // 2) Update open positions with this bar
       this.updateOpenPositions(i);
     }
 
-    // If any positions still open, close them at last candle
-    if (this.openPositions.length) {
+    if (this.openPositions.length > 0) {
       this.updateOpenPositions(this.candles.length - 1);
       this.openPositions = [];
     }
-
-    const finishedAt = Date.now();
 
     return buildBacktestResult({
       strategyId: this.strategyId,
@@ -329,7 +326,7 @@ export class BacktestEngine {
       candles: this.candles,
       trades: this.trades,
       startedAt,
-      finishedAt,
+      finishedAt: Date.now(),
       startingEquity: this.startingEquity,
     });
   }

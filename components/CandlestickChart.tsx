@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType } from 'lightweight-charts';
+import { createChart, ColorType, LineSeries } from 'lightweight-charts';
 
 interface CandlestickChartProps {
   symbol?: string;
@@ -31,7 +31,7 @@ export default function CandlestickChart({
       height: height,
     });
 
-    const lineSeries = chart.addLineSeries({
+    const lineSeries = chart.addSeries(LineSeries, {
       color: '#26a69a',
       lineWidth: 2,
     });

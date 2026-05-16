@@ -1,6 +1,5 @@
 // lib/automation/signalAggregator.ts
 'use client';
-// @ts-nocheck
 
 import { EventEmitter } from 'events';
 import type {
@@ -12,7 +11,7 @@ import type {
   CotState,
   OrderflowState,
   EconState,
-  TradeSignal,
+  TradingSignal,
 } from './types';
 
 export class SignalAggregator extends EventEmitter {
@@ -66,10 +65,10 @@ export class SignalAggregator extends EventEmitter {
     updatedAt: 0,
   };
 
-  private activeSignals: TradeSignal[] = [];
+  private activeSignals: TradingSignal[] = [];
   private lastSignalAt: number | null = null;
 
-  constructor(config: CoreConfig, rules: any[] = []) {
+  constructor(config: CoreConfig) {
     super();
     this.config = config;
   }
@@ -139,81 +138,161 @@ export class SignalAggregator extends EventEmitter {
   // ─────────────────────────────────────────────────────────────
 
   // 🔌 Universal entry point for all indicator updates
-  ingestIndicator(signal: IndicatorSignal) {
-    if (!signal || !signal.name) return;
+  ingestIndicator(signal: IndicatorSignal): void {
+  if (!signal || !signal.name) return;
 
-    switch (signal.name) {
-      case 'bias': {
-        const value = signal.value || {};
-        this.bias = {
-          direction: value.direction || 'neutral',
-          confidence: value.confidence ?? signal.confidence ?? 0,
-          updatedAt: signal.timestamp || Date.now(),
-        };
-        break;
-      }
+  switch (signal.name) {
+    case 'bias': {
+      const value =
+        typeof signal.value === 'object' && signal.value !== null
+          ? signal.value as {
+              direction?: unknown;
+              confidence?: unknown;
+            }
+          : {};
 
-      case 'delta': {
-        const value = signal.value || {};
-        const val =
-          typeof value.value === 'number'
-            ? value.value
-            : typeof value === 'number'
-            ? value
-            : Number(value.value ?? value ?? 0);
+      const direction =
+        value.direction === 'bullish' ||
+        value.direction === 'bearish' ||
+        value.direction === 'neutral'
+          ? value.direction
+          : 'neutral';
 
-        this.delta = {
-          value: val,
-          timeframe: value.timeframe || '485',
-          magnitude: Math.abs(val),
-          updatedAt: signal.timestamp || Date.now(),
-        };
-        break;
-      }
+      const confidence =
+        typeof value.confidence === 'number'
+          ? value.confidence
+          : signal.confidence ?? 0;
 
-      case 'cot': {
-        const v = signal.value || {};
-        const commercials = v.commercials ?? 0;
-        const largeFunds = v.largeFunds ?? 0;
-        const zScore = (largeFunds - commercials) / 100;
-        this.cot = {
-          commercials,
-          largeFunds,
-          zScore,
-          updatedAt: signal.timestamp || Date.now(),
-        };
-        break;
-      }
+      this.bias = {
+        direction,
+        confidence,
+        updatedAt: signal.timestamp || Date.now(),
+      };
 
-      case 'orderflow': {
-        const v = signal.value || {};
-        this.orderflow = {
-          absorption: !!v.absorption,
-          imbalance: v.imbalance ?? 0,
-          sweep: !!v.sweep,
-          updatedAt: signal.timestamp || Date.now(),
-        };
-        break;
-      }
-
-      case 'econ': {
-        const v = signal.value || {};
-        this.econ = {
-          nextEvent: v.nextEvent || v.event || '',
-          minutesUntil: v.minutesUntil ?? 999,
-          impact: (v.impact as any) || 'LOW',
-          updatedAt: signal.timestamp || Date.now(),
-        };
-        break;
-      }
-
-      default:
-        // Future: cycle, divergence, volatility, heatmap, etc.
-        break;
+      break;
     }
 
-    this.maybeEvaluate();
+    case 'delta': {
+      const value =
+        typeof signal.value === 'object' && signal.value !== null
+          ? signal.value as {
+              value?: unknown;
+              timeframe?: unknown;
+            }
+          : {};
+
+      const parsedValue =
+        typeof value.value === 'number'
+          ? value.value
+          : 0;
+
+      this.delta = {
+        value: parsedValue,
+        timeframe:
+          typeof value.timeframe === 'string'
+            ? value.timeframe
+            : '485',
+        magnitude: Math.abs(parsedValue),
+        updatedAt: signal.timestamp || Date.now(),
+      };
+
+      break;
+    }
+
+    case 'cot': {
+      const value =
+        typeof signal.value === 'object' && signal.value !== null
+          ? signal.value as {
+              commercials?: unknown;
+              largeFunds?: unknown;
+            }
+          : {};
+
+      const commercials =
+        typeof value.commercials === 'number'
+          ? value.commercials
+          : 0;
+
+      const largeFunds =
+        typeof value.largeFunds === 'number'
+          ? value.largeFunds
+          : 0;
+
+      this.cot = {
+        commercials,
+        largeFunds,
+        zScore: (largeFunds - commercials) / 100,
+        updatedAt: signal.timestamp || Date.now(),
+      };
+
+      break;
+    }
+
+    case 'orderflow': {
+      const value =
+        typeof signal.value === 'object' && signal.value !== null
+          ? signal.value as {
+              absorption?: unknown;
+              imbalance?: unknown;
+              sweep?: unknown;
+            }
+          : {};
+
+      this.orderflow = {
+        absorption: value.absorption === true,
+        imbalance:
+          typeof value.imbalance === 'number'
+            ? value.imbalance
+            : 0,
+        sweep: value.sweep === true,
+        updatedAt: signal.timestamp || Date.now(),
+      };
+
+      break;
+    }
+
+    case 'econ': {
+      const value =
+        typeof signal.value === 'object' && signal.value !== null
+          ? signal.value as {
+              nextEvent?: unknown;
+              event?: unknown;
+              minutesUntil?: unknown;
+              impact?: unknown;
+            }
+          : {};
+
+      const impact =
+        value.impact === 'LOW' ||
+        value.impact === 'MEDIUM' ||
+        value.impact === 'HIGH'
+          ? value.impact
+          : 'LOW';
+
+      this.econ = {
+        nextEvent:
+          typeof value.nextEvent === 'string'
+            ? value.nextEvent
+            : typeof value.event === 'string'
+            ? value.event
+            : '',
+        minutesUntil:
+          typeof value.minutesUntil === 'number'
+            ? value.minutesUntil
+            : 999,
+        impact,
+        updatedAt: signal.timestamp || Date.now(),
+      };
+
+      break;
+    }
+
+    default:
+      break;
   }
+
+  this.maybeEvaluate();
+}
 
   // ─────────────────────────────────────────────────────────────
   // CORE EVAL PIPELINE
@@ -364,11 +443,11 @@ export class SignalAggregator extends EventEmitter {
   // TRADE SIGNAL CONSTRUCTION
   // ─────────────────────────────────────────────────────────────
 
-  private buildSignal(
+    private buildSignal(
     side: 'long' | 'short',
     score: number,
     confidence: number
-  ): TradeSignal {
+  ): TradingSignal {
     const basePrice =
       this.market === 'MNQ'
         ? 21500
@@ -418,12 +497,14 @@ export class SignalAggregator extends EventEmitter {
       id: `sig_${ts}_${Math.random().toString(36).slice(2, 7)}`,
       market: this.market,
       side,
+      direction: this.bias.direction,
       score,
       confidence,
-      entry_price: entry,
-      stop_price: stop,
-      target_price: target,
+      entryPrice: entry,
+      stopPrice: stop,
+      targetPrice: target,
       timestamp: ts,
+      sourceSignals: [],
       reasons,
     };
   }

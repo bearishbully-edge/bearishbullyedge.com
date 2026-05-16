@@ -3,12 +3,6 @@ import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 // IMPORTANT
 // app/api/webhook/route.ts (top of file)
 

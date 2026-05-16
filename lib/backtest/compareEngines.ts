@@ -1,14 +1,8 @@
 // lib/backtest/compareEngines.ts
-// -----------------------------------------------------------
-// OPTION C — Dual Engine Comparison Layer
-// Exports:
-//   - runBacktestEngine()
-//   - runLiveEngineSim()
-//   - compareEngines()
-// -----------------------------------------------------------
 
 import { SignalAggregator } from '../automation/signalAggregator';
 import { BacktestEngine } from './backtestEngine';
+import { normalizeBacktestConfigToCoreConfig } from '../automation/configAdapters/backtestConfigAdapter';
 
 import type {
   BacktestCandle,
@@ -18,14 +12,9 @@ import type {
 } from './types';
 
 import type {
-  CoreConfig,
   IndicatorSignal,
   TradeSignal,
 } from '../automation/types';
-
-// -----------------------------------------------------------
-// PUBLIC TYPES — Required by ComparisonResults.tsx
-// -----------------------------------------------------------
 
 export interface ComparisonEngineOutput {
   liveSignals: TradeSignal[];
@@ -43,15 +32,7 @@ export interface ComparisonParams {
   config: BacktestConfig;
 }
 
-// -----------------------------------------------------------
-// PUBLIC EXPORT 1: Run Backtest Engine Only
-// (Matches BacktestControl behavior exactly)
-// -----------------------------------------------------------
-export async function runBacktestEngine(params: {
-  candles: BacktestCandle[];
-  strategyId: BacktestStrategyId;
-  config: BacktestConfig;
-}) {
+export async function runBacktestEngine(params: ComparisonParams) {
   const engine = new BacktestEngine({
     candles: params.candles,
     strategyId: params.strategyId,
@@ -65,56 +46,65 @@ export async function runBacktestEngine(params: {
   });
 
   const result = await engine.run();
+
   return {
     trades: result.trades,
     result,
   };
 }
 
-// -----------------------------------------------------------
-// PUBLIC EXPORT 2: Run Live Engine (SignalAggregator Replay)
-// This simulates live real-time logic deterministically.
-// -----------------------------------------------------------
-
 function synthIndicatorsForLive(
   idx: number,
-  candles: BacktestCandle[]
+  candles: BacktestCandle[],
+  symbol: string,
 ): IndicatorSignal[] {
   const candle = candles[idx];
+  if (!candle) return [];
+
   const prev = candles[idx - 1];
 
   const direction =
     !prev || candle.close === prev.close
       ? 'neutral'
       : candle.close > prev.close
-      ? 'bullish'
-      : 'bearish';
+        ? 'bullish'
+        : 'bearish';
 
   const changePct =
     prev && prev.close > 0
       ? Math.abs(candle.close - prev.close) / prev.close
       : 0;
 
+  const biasConfidence = Math.min(changePct * 20, 1);
+
   const bias: IndicatorSignal = {
+    source: 'replay',
+    symbol,
     name: 'bias',
     value: {
       direction,
-      confidence: Math.min(changePct * 20, 1),
+      confidence: biasConfidence,
     },
-    confidence: Math.min(changePct * 20, 1),
+    confidence: biasConfidence,
     timestamp: candle.timestamp,
   };
 
-  // Delta
   let rawDelta = 0;
-  if (typeof candle.delta === 'number') rawDelta = candle.delta;
-  else if (typeof candle.volume === 'number') {
+
+  if (typeof candle.delta === 'number') {
+    rawDelta = candle.delta;
+  } else if (typeof candle.volume === 'number') {
     rawDelta =
-      candle.close > candle.open ? candle.volume :
-      candle.close < candle.open ? -candle.volume : 0;
+      candle.close > candle.open
+        ? candle.volume
+        : candle.close < candle.open
+          ? -candle.volume
+          : 0;
   }
 
   const delta: IndicatorSignal = {
+    source: 'replay',
+    symbol,
     name: 'delta',
     value: {
       value: rawDelta,
@@ -124,9 +114,9 @@ function synthIndicatorsForLive(
     timestamp: candle.timestamp,
   };
 
-  // COT synthetic
   const lookback = Math.max(0, idx - 50);
   const sample = candles.slice(lookback, idx + 1);
+
   const first = sample[0]?.close ?? candle.close;
   const last = sample[sample.length - 1]?.close ?? candle.close;
   const trendPct = first > 0 ? (last - first) / first : 0;
@@ -135,13 +125,17 @@ function synthIndicatorsForLive(
   const largeFunds = 100_000 - commercials;
 
   const cot: IndicatorSignal = {
+    source: 'replay',
+    symbol,
     name: 'cot',
-    value: { commercials, largeFunds },
+    value: {
+      commercials,
+      largeFunds,
+    },
     confidence: Math.min(Math.abs(trendPct) * 10, 1),
     timestamp: candle.timestamp,
   };
 
-  // Orderflow
   const body = Math.abs(candle.close - candle.open);
   const range = candle.high - candle.low || 1;
   const bodyPct = body / range;
@@ -151,19 +145,31 @@ function synthIndicatorsForLive(
     (candle.close > candle.open ? range * 0.5 : -range * 0.5);
 
   const orderflow: IndicatorSignal = {
+    source: 'replay',
+    symbol,
     name: 'orderflow',
     value: {
-      absorption: bodyPct > 0.6 && Math.abs(imbalance) < range * 0.3,
+      absorption:
+        bodyPct > 0.6 &&
+        Math.abs(imbalance) < range * 0.3,
       imbalance,
-      sweep: bodyPct > 0.6 && Math.abs(imbalance) > range * 0.7,
+      sweep:
+        bodyPct > 0.6 &&
+        Math.abs(imbalance) > range * 0.7,
     },
     confidence: Math.min(bodyPct * 2, 1),
     timestamp: candle.timestamp,
   };
 
   const econ: IndicatorSignal = {
+    source: 'replay',
+    symbol,
     name: 'econ',
-    value: { nextEvent: '', minutesUntil: 999, impact: 'LOW' },
+    value: {
+      nextEvent: '',
+      minutesUntil: 999,
+      impact: 'LOW',
+    },
     confidence: 0.5,
     timestamp: candle.timestamp,
   };
@@ -171,72 +177,82 @@ function synthIndicatorsForLive(
   return [bias, delta, cot, orderflow, econ];
 }
 
-export async function runLiveEngineSim(params: {
-  candles: BacktestCandle[];
-  strategyId: BacktestStrategyId;
-  config: BacktestConfig;
-}) {
-  const agg = new SignalAggregator(params.config as CoreConfig, []);
-  const signals: TradeSignal[] = [];
+export async function runLiveEngineSim(params: ComparisonParams) {
+  const coreConfig =
+    normalizeBacktestConfigToCoreConfig(params.config);
 
-  agg.on('signal', (s) => signals.push(s));
+  const agg = new SignalAggregator(coreConfig);
+
+  const signals: TradeSignal[] = [];
+  agg.on('signal', (signal: TradeSignal) => {
+    signals.push(signal);
+  });
+
+  agg.setEnabled(true);
 
   for (let i = 0; i < params.candles.length; i++) {
-    const indicators = synthIndicatorsForLive(i, params.candles);
-    for (const ind of indicators) agg.ingestIndicator(ind);
+    const indicators = synthIndicatorsForLive(
+      i,
+      params.candles,
+      params.config.symbol,
+    );
+
+    for (const indicator of indicators) {
+      agg.ingestIndicator(indicator);
+    }
   }
 
   return { signals };
 }
 
-// -----------------------------------------------------------
-// PUBLIC EXPORT 3: Compare Both Engines
-// -----------------------------------------------------------
-
 export async function compareEngines(params: {
   liveSignals: TradeSignal[];
   backtestTrades: BacktestResult['trades'];
-}) {
+}): Promise<ComparisonEngineOutput> {
   const { liveSignals, backtestTrades } = params;
 
-  const simplifiedLive = liveSignals.map((s) => ({
-    side: s.side,
-    ts: s.timestamp,
+  const simplifiedLive = liveSignals.map((signal) => ({
+    side: signal.side,
+    ts: signal.timestamp,
   }));
 
-  const simplifiedBT = backtestTrades.map((t) => ({
-    side: t.side,
-    ts: t.openedAt,
+  const simplifiedBacktest = backtestTrades.map((trade) => ({
+    side: trade.side,
+    ts: trade.openedAt,
   }));
 
-  let matching = 0;
-  let mismatching = 0;
+  let matchingCount = 0;
+  let mismatchingCount = 0;
 
-  simplifiedLive.forEach((ls) => {
-    const match = simplifiedBT.find(
-      (bt) =>
-        bt.side === ls.side &&
-        Math.abs(bt.ts - ls.ts) <= 1000
+  simplifiedLive.forEach((liveSignal) => {
+    const match = simplifiedBacktest.find(
+      (backtestTrade) =>
+        backtestTrade.side === liveSignal.side &&
+        Math.abs(backtestTrade.ts - liveSignal.ts) <= 1000,
     );
-    if (match) matching++;
-    else mismatching++;
+
+    if (match) {
+      matchingCount++;
+    } else {
+      mismatchingCount++;
+    }
   });
 
-  const missed = Math.max(0, simplifiedLive.length - matching);
-  const extras = Math.max(0, simplifiedBT.length - matching);
+  const missedSignals = Math.max(0, simplifiedLive.length - matchingCount);
+  const extraSignals = Math.max(0, simplifiedBacktest.length - matchingCount);
 
   return {
     liveSignals,
     backtestTrades,
-    matchingCount: matching,
-    mismatchingCount: mismatching,
-    missedSignals: missed,
-    extraSignals: extras,
+    matchingCount,
+    mismatchingCount,
+    missedSignals,
+    extraSignals,
     summary: [
-      `Matched: ${matching}`,
-      `Mismatched: ${mismatching}`,
-      `Live-but-missing: ${missed}`,
-      `Backtest-only signals: ${extras}`,
+      `Matched: ${matchingCount}`,
+      `Mismatched: ${mismatchingCount}`,
+      `Live-but-missing: ${missedSignals}`,
+      `Backtest-only signals: ${extraSignals}`,
     ],
   };
 }

@@ -49,7 +49,11 @@ export default function OrderFlowWidget() {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          setOrderFlow(payload.new.data);
+        const newRow = payload.new as { data?: OrderFlowData };
+
+        if (newRow.data) {
+          setOrderFlow(newRow.data);
+        }
           setConnected(true);
         }
       )

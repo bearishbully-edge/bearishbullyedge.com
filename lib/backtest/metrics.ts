@@ -65,9 +65,9 @@ export function computeMetrics(
 
   for (const t of realized) {
     const riskPerTrade =
-      t.signal.stop_price && t.signal.entry_price
-        ? Math.abs(t.signal.entry_price - t.signal.stop_price)
-        : t.signal.entry_price * 0.005; // fallback 0.5%
+      t.signal.stopPrice && t.signal.entryPrice
+        ? Math.abs(t.signal.entryPrice - t.signal.stopPrice)
+        : t.signal.entryPrice * 0.005; // fallback 0.5%
 
     const pnl = t.pnl ?? 0;
     const r = riskPerTrade > 0 ? pnl / riskPerTrade : 0;

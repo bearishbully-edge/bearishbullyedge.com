@@ -1,9 +1,31 @@
 // lib/automation/types.ts
 
-export type MarketSymbol = 'MNQ' | 'MES' | 'QQQ' | 'SPY';
+import type {
+  IndicatorSignal,
+  Position,
+  RiskRules,
+  StrategyDefinition,
+  TradingSignal,
+  MarketSymbol,
+  SignalDirection,
+  TradeMode,
+} from '@/types/trading';
+
+export type {
+  IndicatorSignal,
+  Position,
+  RiskRules,
+  StrategyDefinition,
+  TradingSignal,
+  MarketSymbol,
+  SignalDirection,
+  TradeMode,
+};
+
+export type TradeSignal = TradingSignal;
 
 export interface CoreConfig {
-  mode: 'paper' | 'live';
+  mode: TradeMode;
   orderflow_required: boolean;
   veto_window_minutes: number;
   base_cash: number;
@@ -14,16 +36,9 @@ export interface CoreConfig {
   single_trade_max_pct: number;
 }
 
-export interface IndicatorSignal {
-  name: string;           // "bias" | "delta" | "cot" | "orderflow" | "econ" | etc.
-  value: any;
-  confidence: number;     // 0–1
-  timestamp: number;
-}
-
 export interface BiasState {
-  direction: 'bullish' | 'bearish' | 'neutral';
-  confidence: number; // 0–1
+  direction: SignalDirection;
+  confidence: number;
   updatedAt: number;
 }
 
@@ -55,56 +70,27 @@ export interface EconState {
   updatedAt: number;
 }
 
-export interface TradeSignal {
-  id: string;
-  market: MarketSymbol | string;
-  side: 'long' | 'short';
-  score: number;
-  confidence: number;
-  entry_price: number;
-  stop_price: number;
-  target_price: number;
-  timestamp: number;
-  reasons: string[];
-  tags?: string[];
-}
-
 export interface AggregatorStatus {
   enabled: boolean;
-  market: MarketSymbol | string;
+  market: MarketSymbol;
   currentScore: number;
   lastSignalAt: number | null;
+
   bias: BiasState;
   delta: DeltaState;
   cot: CotState;
   orderflow: OrderflowState;
   econ: EconState;
-  activeSignals: TradeSignal[];
+
+  activeSignals: TradingSignal[];
 }
 
 export interface ExecutorConfig {
-  mode: 'paper' | 'live';
-  max_slippage_pct: number;
-  position_limits: {
-    max_positions: number;
-    max_position_size_usd: number;
-    max_daily_trades: number;
-  };
-}
+  mode: TradeMode;
 
-export interface Position {
-  id: string;
-  signal_id: string;
-  market: string;
-  side: 'long' | 'short';
-  entry_price: number;
-  stop_price: number;
-  target_price: number;
-  size_usd: number;
-  opened_at: number;
-  closed_at?: number;
-  status: 'open' | 'closed';
-  pnl?: number;
+  maxSlippagePct: number;
+
+  riskRules: RiskRules;
 }
 
 export interface ExecutorStats {
