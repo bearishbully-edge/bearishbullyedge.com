@@ -288,20 +288,56 @@ if (!hasTerminalAccess) {
           <h2 className='text-xl sm:text-2xl font-bold text-white mb-4'>Technical Systems (Phase 3)</h2>
           <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6'>
             {[
-              { name: 'Scanner', icon: '🔍', desc: 'Multi-Symbol' },
-              { name: 'Cycles', icon: '🔄', desc: 'Expansion' },
-              { name: 'Heatmap', icon: '🔥', desc: 'Smart Money' },
-              { name: 'Divergence', icon: '📈', desc: 'RSI/MACD' },
-              { name: 'Volatility', icon: '⚡', desc: 'ATR + Events' }
-            ].map(item => (
-              <div key={item.name} className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6'>
-                <div className='flex flex-col items-center'>
-                  <div className='text-2xl sm:text-3xl mb-2'>{item.icon}</div>
-                  <h3 className='text-xs sm:text-sm font-semibold text-gray-300'>{item.name}</h3>
-                  <p className='text-xs text-gray-500 text-center mt-1'>{item.desc}</p>
-                </div>
+  {
+    name: 'Scanner',
+    icon: '🔍',
+    desc: 'Multi-Symbol',
+  },
+  {
+    name: 'Cycles',
+    icon: '🔄',
+    desc: 'Expansion',
+  },
+  {
+    name: 'Heatmap',
+    icon: '🔥',
+    desc: 'Smart Money',
+  },
+  {
+    name: 'Divergence',
+    icon: '📈',
+    desc: 'RSI/MACD',
+  },
+  {
+    name: 'Volatility',
+    icon: '⚡',
+    desc: 'ATR + Events',
+  },
+  {
+    name: 'Coach',
+    icon: '🧠',
+    desc: 'Discipline OS',
+    href: '/dashboard/coach/checklist',
+  },
+          ].map(item => (
+            <a
+              key={item.name}
+              href={item.href ?? '#'}
+              className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition block'
+            >
+              <div className='flex flex-col items-center'>
+                <div className='text-2xl sm:text-3xl mb-2'>{item.icon}</div>
+
+                <h3 className='text-xs sm:text-sm font-semibold text-gray-300'>
+                  {item.name}
+                </h3>
+
+                <p className='text-xs text-gray-500 text-center mt-1'>
+                  {item.desc}
+                </p>
               </div>
-            ))}
+            </a>
+          ))}
           </div>
         </div>
       </div>
