@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { supabase } from '../../../lib/supabaseClient';
 
 type TradeSide = 'long' | 'short';
 type TradeTag =
@@ -78,6 +79,8 @@ function coachNoteFromScore(score: number): string {
 }
 
 export default function JournalPage() {
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');    
   const [form, setForm] = useState<JournalForm>({
     symbol: 'QQQ',
     tradeSide: 'long',
@@ -112,12 +115,68 @@ export default function JournalPage() {
     }));
   };
 
-  const updateBoolean = (key: keyof JournalForm) => {
+const saveJournalDraft = async () => {
+setSaving(true);
+setSaveMessage('');
+
+const {
+    data: { session },
+    error: sessionError,
+} = await supabase.auth.getSession();
+
+if (sessionError || !session?.user) {
+    setSaveMessage('Login required before saving journal entries.');
+    setSaving(false);
+    return;
+}
+
+const { error } = await supabase.from('trade_journal_entries').insert({
+    user_id: session.user.id,
+
+    symbol: form.symbol,
+    trade_side: form.tradeSide,
+    setup_name: form.setupName || null,
+    entry_price: form.entryPrice ? Number(form.entryPrice) : null,
+    stop_price: form.stopPrice ? Number(form.stopPrice) : null,
+    target_price: form.targetPrice ? Number(form.targetPrice) : null,
+    exit_price: form.exitPrice ? Number(form.exitPrice) : null,
+    pnl: form.pnl ? Number(form.pnl) : null,
+
+    bias_state: form.biasAligned ? 'aligned' : 'not_confirmed',
+    volatility_state: form.volatilityFavorable ? 'favorable' : 'not_confirmed',
+    liquidity_context: form.liquidityMapped ? 'mapped' : 'not_mapped',
+    economic_risk: form.economicRiskHandled ? 'handled' : 'not_confirmed',
+
+    rule_followed: form.checklistComplete && form.riskRewardDefined,
+    emotional_state: form.emotionalState || null,
+    lesson: form.lesson || null,
+    notes: [
+    form.notes,
+    `System confidence score: ${score}`,
+    `System setup grade: ${grade}`,
+    `Coach note: ${coachNote}`,
+    `Tags: ${form.tags.join(', ') || 'none'}`,
+    ]
+    .filter(Boolean)
+    .join('\n\n'),
+});
+
+if (error) {
+    setSaveMessage(error.message);
+    setSaving(false);
+    return;
+}
+
+setSaveMessage('Journal draft saved.');
+setSaving(false);
+};  
+
+const updateBoolean = (key: keyof JournalForm) => {
     setForm((current) => ({
-      ...current,
-      [key]: !current[key],
+    ...current,
+    [key]: !current[key],
     }));
-  };
+};
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
@@ -242,9 +301,19 @@ export default function JournalPage() {
                 </p>
               </div>
 
-              <button className="mt-5 w-full rounded-xl bg-emerald-400 px-6 py-4 font-black text-slate-950 hover:bg-emerald-300">
-                Save Journal Draft
-              </button>
+                <button
+                onClick={saveJournalDraft}
+                disabled={saving}
+                className="mt-5 w-full rounded-xl bg-emerald-400 px-6 py-4 font-black text-slate-950 hover:bg-emerald-300 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+                >
+                {saving ? 'Saving...' : 'Save Journal Draft'}
+                </button>
+
+                {saveMessage && (
+                <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300">
+                    {saveMessage}
+                </div>
+                )}
 
               <p className="mt-3 text-xs leading-5 text-slate-500">
                 MVP note: this screen is ready for auto-captured trades. Next step is wiring
