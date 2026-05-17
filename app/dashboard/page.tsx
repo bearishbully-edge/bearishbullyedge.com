@@ -16,6 +16,7 @@ import Watchlist from '../../components/Watchlist';
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [hasTerminalAccess, setHasTerminalAccess] = useState(false);
   const [symbol, setSymbol] = useState('QQQ');
   const [watchlistCollapsed, setWatchlistCollapsed] = useState(false);  // ADD THIS LINE
   const router = useRouter();
@@ -25,19 +26,43 @@ export default function Dashboard() {
   }, []);
 
   const checkUser = async () => {
-    const {
-      data: { session },
-      error,
-    } = await supabase.auth.getSession();
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
 
-    if (error || !session?.user) {
-      router.push('/auth/login');
-      return;
-    }
+  if (error || !session?.user) {
+    router.push('/auth/login');
+    return;
+  }
 
-    setUser(session.user);
+  setUser(session.user);
+
+  const licenseResponse = await fetch('/api/user/license/get', {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!licenseResponse.ok) {
+    setHasTerminalAccess(false);
     setLoading(false);
-  };
+    return;
+  }
+
+  const licenseData = await licenseResponse.json();
+
+  const tier = licenseData?.entitlement?.tier;
+  const status = licenseData?.entitlement?.status;
+
+  const approved =
+    status === 'active' &&
+    ['edge_pro', 'edge_institutional', 'signal_trader', 'ultimate'].includes(
+      tier,
+    );
+
+  setHasTerminalAccess(approved);
+  setLoading(false);
+};
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -55,6 +80,37 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  if (!hasTerminalAccess) {
+  return (
+    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="max-w-xl rounded-3xl border border-slate-800 bg-slate-900 p-8 text-center shadow-2xl">
+        <div className="mb-4 text-5xl">🔒</div>
+
+        <h1 className="text-3xl font-black mb-3">
+          Membership Pending
+        </h1>
+
+        <p className="text-slate-300 leading-7">
+          Your account was created successfully. BearishBully Edge is currently
+          invitation-only while the terminal is being hardened for early access
+          members.
+        </p>
+
+        <p className="mt-4 text-sm text-slate-500">
+          You’ll receive access when your membership is approved.
+        </p>
+
+        <button
+          onClick={handleLogout}
+          className="mt-6 rounded-xl bg-white px-6 py-3 font-bold text-slate-950 hover:bg-slate-200"
+        >
+          Logout
+        </button>
+      </div>
+    </main>
+  );
+}
 
   const getSymbolName = (sym: string) => {
     const names: { [key: string]: string } = {
