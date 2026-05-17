@@ -123,16 +123,34 @@
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">
-          <Feature title="Bias Engine" text="Track daily directional context across SPX, NDX, DJIA, and volatility conditions." />
-          <Feature title="Volume Delta" text="Monitor buyer/seller pressure and identify aggressive participation." />
-          <Feature title="COT Overlay" text="View institutional positioning context before taking directional risk." />
-          <Feature title="Economic Calendar" text="Avoid high-impact event windows before entering trades." />
+          <Feature
+            title="Bias Engine"
+            text="Build directional context across major markets, instruments, and conditions so you are not trading isolated candles without a broader read."
+          />
+          <Feature
+            title="True Volume Delta"
+            text="Analyze real buying and selling pressure from true volume behavior, a capability only a small number of serious platforms attempt to deliver well."
+          />
+          <Feature
+            title="COT Overlay"
+            text="Add institutional positioning context to your process so you can understand where larger participants may be leaning before taking risk."
+          />
+          <Feature
+            title="Economic Calendar"
+            text="Prepare for high-impact windows with context, timing, and risk awareness — whether your plan is to avoid the event or trade the opportunity."
+          />
           <Feature
             title="Guided Market Intelligence"
             text="Built-in context helps members understand what market signals, events, and relationships may mean inside a disciplined trading process."
           />          
-          <Feature title="Paper Automation" text="Test strategy logic with explicit paper execution and risk limits." />
-          <Feature title="Replay & Backtesting" text="Compare replay behavior against backtest results for consistency." />
+          <Feature
+            title="Paper Automation"
+            text="Practice execution logic, alerts, and automation workflows in a controlled environment before connecting real capital or live brokerage access."
+          />
+          <Feature
+            title="Replay & Backtesting"
+            text="Study historical behavior, compare strategy ideas, and replay market conditions to sharpen decision-making before the next live session."
+          />
         </div>
       </section>
 
