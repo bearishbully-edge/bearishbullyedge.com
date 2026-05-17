@@ -137,11 +137,11 @@
           />
           <Feature
             title="Economic Calendar"
-            text="Prepare for high-impact windows with context, timing, and risk awareness — whether your plan is to avoid the event or trade the opportunity."
+            text="Prepare for high impact windows with context, timing, and risk awareness, whether your plan is to avoid the event or trade the opportunity."
           />
           <Feature
             title="Guided Market Intelligence"
-            text="Built-in context helps members understand what market signals, events, and relationships may mean inside a disciplined trading process."
+            text="Built in context helps members understand what market signals, events, and relationships may mean inside a disciplined trading process."
           />          
           <Feature
             title="Paper Automation"
@@ -149,7 +149,7 @@
           />
           <Feature
             title="Replay & Backtesting"
-            text="Study historical behavior, compare strategy ideas, and replay market conditions to sharpen decision-making before the next live session."
+            text="Study historical behavior, compare strategy ideas, and replay market conditions to sharpen decision making before the next live session."
           />
         </div>
       </section>
