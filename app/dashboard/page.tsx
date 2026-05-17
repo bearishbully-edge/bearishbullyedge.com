@@ -319,6 +319,12 @@ if (!hasTerminalAccess) {
     desc: 'Discipline OS',
     href: '/dashboard/coach/checklist',
   },
+  {
+    name: 'Journal',
+    icon: '📓',
+    desc: 'Trade Review',
+    href: '/dashboard/journal',
+  },  
           ].map(item => (
             <a
               key={item.name}
