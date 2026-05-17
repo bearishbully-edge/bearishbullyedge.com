@@ -13,7 +13,7 @@
           <a href="#plans" className="hover:text-white">
             Plans
           </a>
-          <a href="/auth/login" className="hover:text-white">
+          <a href="https://bearishbullyedge.io/auth/login" className="hover:text-white">
             Log In
           </a>
         </nav>
@@ -42,6 +42,12 @@
             tools into one clean terminal built for serious decision-making.
           </p>
 
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-400">
+            Guided market intelligence is built into the platform, helping members
+            understand the context behind signals, events, correlations, and market
+            structure, not just view data.
+          </p>          
+
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <a
               href="/auth/signup"
@@ -51,7 +57,7 @@
             </a>
 
             <a
-              href="/auth/login"
+              href="https://bearishbullyedge.io/auth/login"
               className="rounded-xl border border-slate-700 px-7 py-4 text-center font-bold text-white hover:bg-slate-900"
             >
               Log In
@@ -121,6 +127,10 @@
           <Feature title="Volume Delta" text="Monitor buyer/seller pressure and identify aggressive participation." />
           <Feature title="COT Overlay" text="View institutional positioning context before taking directional risk." />
           <Feature title="Economic Calendar" text="Avoid high-impact event windows before entering trades." />
+          <Feature
+            title="Guided Market Intelligence"
+            text="Built-in context helps members understand what market signals, events, and relationships may mean inside a disciplined trading process."
+          />          
           <Feature title="Paper Automation" text="Test strategy logic with explicit paper execution and risk limits." />
           <Feature title="Replay & Backtesting" text="Compare replay behavior against backtest results for consistency." />
         </div>
