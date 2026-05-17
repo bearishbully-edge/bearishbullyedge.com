@@ -112,6 +112,37 @@ export default function Dashboard() {
   );
 }
 
+if (!hasTerminalAccess) {
+  return (
+    <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6">
+      <div className="max-w-xl rounded-3xl border border-slate-800 bg-slate-900 p-8 text-center shadow-2xl">
+        <div className="mb-4 text-5xl">🔒</div>
+
+        <h1 className="text-3xl font-black mb-3">
+          Membership Pending
+        </h1>
+
+        <p className="text-slate-300 leading-7">
+          Your account was created successfully. BearishBully Edge is currently
+          invitation-only while the terminal is being hardened for early access
+          members.
+        </p>
+
+        <p className="mt-4 text-sm text-slate-500">
+          You’ll receive access when your membership is approved.
+        </p>
+
+        <button
+          onClick={handleLogout}
+          className="mt-6 rounded-xl bg-white px-6 py-3 font-bold text-slate-950 hover:bg-slate-200"
+        >
+          Logout
+        </button>
+      </div>
+    </main>
+  );
+}
+
   const getSymbolName = (sym: string) => {
     const names: { [key: string]: string } = {
       'QQQ': 'Nasdaq 100 ETF (QQQ)',
