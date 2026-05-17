@@ -38,21 +38,20 @@ export default function Dashboard() {
 
   setUser(session.user);
 
-  const licenseResponse = await fetch('/api/user/license/get', {
-    method: 'GET',
-    credentials: 'include',
-  });
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('license_tier, subscription_status')
+    .eq('id', session.user.id)
+    .maybeSingle();
 
-  if (!licenseResponse.ok) {
+  if (profileError || !profile) {
     setHasTerminalAccess(false);
     setLoading(false);
     return;
   }
 
-  const licenseData = await licenseResponse.json();
-
-  const tier = licenseData?.entitlement?.tier;
-  const status = licenseData?.entitlement?.status;
+  const tier = profile.license_tier;
+  const status = profile.subscription_status;
 
   const approved =
     status === 'active' &&
