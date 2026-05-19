@@ -336,6 +336,12 @@ if (!hasTerminalAccess) {
   icon: '📈',
   desc: 'Discipline Analytics',
   href: '/dashboard/performance',
+  },
+  {
+  name: 'Social',
+  icon: '🌐',
+  desc: 'Community & Copy',
+  href: '/dashboard/social',
   },  
           ].map(item => (
             <a
