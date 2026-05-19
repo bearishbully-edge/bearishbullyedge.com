@@ -314,6 +314,12 @@ if (!hasTerminalAccess) {
     desc: 'ATR + Events',
   },
   {
+  name: 'Liquidity',
+  icon: '💧',
+  desc: 'Liquidity Mapping',
+  href: '/dashboard/liquidity',
+  },
+  {
     name: 'Coach',
     icon: '🧠',
     desc: 'Discipline OS',
@@ -324,6 +330,12 @@ if (!hasTerminalAccess) {
     icon: '📓',
     desc: 'Trade Review',
     href: '/dashboard/journal',
+  },
+  {
+  name: 'Performance',
+  icon: '📈',
+  desc: 'Discipline Analytics',
+  href: '/dashboard/performance',
   },  
           ].map(item => (
             <a
