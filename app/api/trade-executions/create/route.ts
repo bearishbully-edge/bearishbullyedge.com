@@ -143,11 +143,25 @@ export async function POST(req: Request) {
     status: asString(body.status) ?? 'open',
   };
 
-  const { data: execution, error: executionError } = await supabase
+const shouldUseUpsert =
+typeof executionPayload.broker_trade_id === 'string' &&
+executionPayload.broker_trade_id.length > 0;
+
+const executionQuery = shouldUseUpsert
+? supabase
+    .from('trade_executions')
+    .upsert(executionPayload, {
+        onConflict: 'user_id,execution_source,broker_trade_id',
+    })
+    .select('id')
+    .single()
+: supabase
     .from('trade_executions')
     .insert(executionPayload)
     .select('id')
     .single();
+
+const { data: execution, error: executionError } = await executionQuery;
 
   if (executionError || !execution) {
     return NextResponse.json(
