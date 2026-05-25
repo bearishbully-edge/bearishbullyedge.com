@@ -209,6 +209,34 @@ if (existingJournalEntry) {
   });
 }
 
+const { data: existingJournalEntry, error: existingJournalError } =
+  await supabase
+    .from('trade_journal_entries')
+    .select('id')
+    .eq('execution_id', execution.id)
+    .maybeSingle();
+
+if (existingJournalError) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: 'journal_lookup_failed',
+      message: existingJournalError.message,
+      executionId: execution.id,
+    },
+    { status: 500 },
+  );
+}
+
+if (existingJournalEntry) {
+  return NextResponse.json({
+    ok: true,
+    executionId: execution.id,
+    journalEntryId: existingJournalEntry.id,
+    reused: true,
+  });
+}
+
 const { data: journalEntry, error: journalError } = await supabase
   .from('trade_journal_entries')
   .insert({
