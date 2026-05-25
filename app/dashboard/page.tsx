@@ -294,6 +294,13 @@ if (!hasTerminalAccess) {
     desc: 'Multi-Symbol',
   },
   {
+  name: 'Signals',
+  icon: '📡',
+  desc: 'Signal Engine',
+  href: '/dashboard/signals',
+  },
+
+  {
     name: 'Cycles',
     icon: '🔄',
     desc: 'Expansion',
@@ -303,6 +310,7 @@ if (!hasTerminalAccess) {
     icon: '🔥',
     desc: 'Smart Money',
   },
+
   {
     name: 'Divergence',
     icon: '📈',
@@ -313,12 +321,15 @@ if (!hasTerminalAccess) {
     icon: '⚡',
     desc: 'ATR + Events',
   },
+    
   {
   name: 'Liquidity',
   icon: '💧',
   desc: 'Liquidity Mapping',
   href: '/dashboard/liquidity',
   },
+
+
   {
     name: 'Coach',
     icon: '🧠',
@@ -337,6 +348,7 @@ if (!hasTerminalAccess) {
   desc: 'Discipline Analytics',
   href: '/dashboard/performance',
   },
+  
   {
   name: 'Social',
   icon: '🌐',
