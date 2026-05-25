@@ -181,34 +181,64 @@ const { data: execution, error: executionError } = await executionQuery;
     `System setup grade: ${executionPayload.setup_grade ?? 'not graded'}.`,
   ].join('\n\n');
 
-  const { data: journalEntry, error: journalError } = await supabase
+const { data: existingJournalEntry, error: existingJournalError } =
+  await supabase
     .from('trade_journal_entries')
-    .insert({
-      user_id: userId,
-      symbol,
-      trade_side: tradeSide,
-
-      setup_name: executionPayload.strategy_name,
-      entry_price: executionPayload.entry_price,
-      stop_price: executionPayload.stop_price,
-      target_price: executionPayload.target_price,
-      exit_price: executionPayload.exit_price,
-      pnl: executionPayload.pnl,
-
-      bias_state: executionPayload.bias_state,
-      volatility_state: executionPayload.volatility_state,
-      liquidity_context: executionPayload.liquidity_state,
-      cycle_context: executionPayload.cycle_state,
-      divergence_context: executionPayload.divergence_state,
-      economic_risk: executionPayload.economic_risk_state,
-
-      rule_followed: null,
-      emotional_state: null,
-      lesson: null,
-      notes: journalNotes,
-    })
     .select('id')
-    .single();
+    .eq('execution_id', execution.id)
+    .maybeSingle();
+
+if (existingJournalError) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: 'journal_lookup_failed',
+      message: existingJournalError.message,
+      executionId: execution.id,
+    },
+    { status: 500 },
+  );
+}
+
+if (existingJournalEntry) {
+  return NextResponse.json({
+    ok: true,
+    executionId: execution.id,
+    journalEntryId: existingJournalEntry.id,
+    reused: true,
+  });
+}
+
+const { data: journalEntry, error: journalError } = await supabase
+  .from('trade_journal_entries')
+  .insert({
+    execution_id: execution.id,
+
+    user_id: userId,
+    symbol,
+    trade_side: tradeSide,
+
+    setup_name: executionPayload.strategy_name,
+    entry_price: executionPayload.entry_price,
+    stop_price: executionPayload.stop_price,
+    target_price: executionPayload.target_price,
+    exit_price: executionPayload.exit_price,
+    pnl: executionPayload.pnl,
+
+    bias_state: executionPayload.bias_state,
+    volatility_state: executionPayload.volatility_state,
+    liquidity_context: executionPayload.liquidity_state,
+    cycle_context: executionPayload.cycle_state,
+    divergence_context: executionPayload.divergence_state,
+    economic_risk: executionPayload.economic_risk_state,
+
+    rule_followed: null,
+    emotional_state: null,
+    lesson: null,
+    notes: journalNotes,
+  })
+  .select('id')
+  .single();
 
   if (journalError || !journalEntry) {
     return NextResponse.json(
