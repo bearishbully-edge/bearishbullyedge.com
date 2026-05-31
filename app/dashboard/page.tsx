@@ -328,7 +328,12 @@ if (!hasTerminalAccess) {
   desc: 'Liquidity Mapping',
   href: '/dashboard/liquidity',
   },
-
+  {
+  name: 'Orderflow',
+  icon: '🌊',
+  desc: 'Flow Engine',
+  href: '/dashboard/orderflow',
+  },
 
   {
     name: 'Coach',
@@ -342,13 +347,20 @@ if (!hasTerminalAccess) {
     desc: 'Trade Review',
     href: '/dashboard/journal',
   },
+
+  {
+  name: 'Executions',
+  icon: '⚔️',
+  desc: 'Execution Feed',
+  href: '/dashboard/executions',
+  },
   {
   name: 'Performance',
   icon: '📈',
   desc: 'Discipline Analytics',
   href: '/dashboard/performance',
   },
-  
+
   {
   name: 'Social',
   icon: '🌐',
