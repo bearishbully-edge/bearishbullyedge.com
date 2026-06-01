@@ -7,6 +7,15 @@ type ScanCandidate = {
   tradeSide: 'long' | 'short';
   confidenceScore: number;
   setupGrade: string;
+  liquidityAnalysis?: {
+    liquidityScore: number;
+    liquidityBias: string;
+    sweepDetected: boolean;
+    sweepDirection: string;
+    targetLiquidityZone: string;
+    stopRunProbability: number;
+    coachNote: string;
+  };
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -251,6 +260,49 @@ export default function ScannerPage() {
                               active={candidate.conditions.economicRiskClear}
                             />
                           </div>
+                          {candidate.liquidityAnalysis && (
+                            <div className="mt-5 rounded-2xl border border-blue-400/30 bg-blue-400/10 p-5">
+                              <div className="mb-4 text-xs font-black uppercase tracking-[0.2em] text-blue-300">
+                                Liquidity Intelligence
+                              </div>
+
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                <Metric
+                                  label="Liquidity Score"
+                                  value={`${candidate.liquidityAnalysis.liquidityScore}%`}
+                                />
+
+                                <Metric
+                                  label="Bias"
+                                  value={candidate.liquidityAnalysis.liquidityBias}
+                                />
+
+                                <Metric
+                                  label="Sweep"
+                                  value={candidate.liquidityAnalysis.sweepDirection}
+                                />
+
+                                <Metric
+                                  label="Target Zone"
+                                  value={candidate.liquidityAnalysis.targetLiquidityZone}
+                                />
+
+                                <Metric
+                                  label="Stop Run"
+                                  value={`${candidate.liquidityAnalysis.stopRunProbability}%`}
+                                />
+
+                                <Metric
+                                  label="Sweep Detected"
+                                  value={candidate.liquidityAnalysis.sweepDetected ? 'YES' : 'NO'}
+                                />
+                              </div>
+
+                              <p className="mt-4 text-sm leading-6 text-blue-100">
+                                {candidate.liquidityAnalysis.coachNote}
+                              </p>
+                            </div>
+                          )}                          
                         </div>
 
                         <div className="lg:min-w-[220px]">
@@ -333,6 +385,20 @@ function StatCard({
             : 'mt-2 text-4xl font-black'
         }
       >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-950 p-3">
+      <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+
+      <div className="mt-1 text-sm font-black text-white">
         {value}
       </div>
     </div>
