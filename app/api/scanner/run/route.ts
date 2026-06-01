@@ -1,4 +1,8 @@
 import { NextResponse } from 'next/server';
+import {
+  analyzeLiquidity,
+  type LiquidityAnalysis,
+} from '@/lib/market-engines/liquidityEngine';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,6 +17,7 @@ type ScanCandidate = {
   tradeSide: 'long' | 'short';
   confidenceScore: number;
   setupGrade: string;
+  liquidityAnalysis: LiquidityAnalysis;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -40,28 +45,75 @@ function gradeFromScore(score: number): string {
   return 'D';
 }
 
+function buildSyntheticLiquidityInput(symbol: string) {
+  const seed = symbol
+    .split('')
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return {
+    symbol,
+
+    equalHighs: seed % 2 === 0,
+    equalLows: seed % 3 === 0,
+
+    buySideLiquidityPresent: seed % 5 !== 0,
+    sellSideLiquidityPresent: seed % 7 !== 0,
+
+    buySideSweepDetected: seed % 4 === 0,
+    sellSideSweepDetected: seed % 6 === 0,
+
+    reclaimConfirmed: seed % 3 !== 1,
+
+    compressionDetected: seed % 2 !== 0,
+  };
+}
+
 function scoreCandidate(symbol: string): ScanCandidate {
   const biasAligned = Math.random() > 0.2;
   const volatilityExpansion = Math.random() > 0.25;
-  const liquidityMapped = Math.random() > 0.2;
   const cycleAligned = Math.random() > 0.3;
   const divergenceConfirmed = Math.random() > 0.35;
   const economicRiskClear = Math.random() > 0.15;
 
+  const liquidityAnalysis = analyzeLiquidity(
+    buildSyntheticLiquidityInput(symbol),
+  );
+
+  const liquidityMapped =
+    liquidityAnalysis.liquidityScore >= 50 ||
+    liquidityAnalysis.sweepDetected ||
+    liquidityAnalysis.targetLiquidityZone !== 'none';
+
   let confidenceScore = 0;
 
-  if (biasAligned) confidenceScore += 20;
-  if (volatilityExpansion) confidenceScore += 22;
-  if (liquidityMapped) confidenceScore += 18;
-  if (cycleAligned) confidenceScore += 16;
-  if (divergenceConfirmed) confidenceScore += 14;
-  if (economicRiskClear) confidenceScore += 10;
+  if (biasAligned) confidenceScore += 18;
+  if (volatilityExpansion) confidenceScore += 20;
+  if (liquidityMapped) confidenceScore += 10;
+  if (cycleAligned) confidenceScore += 14;
+  if (divergenceConfirmed) confidenceScore += 12;
+  if (economicRiskClear) confidenceScore += 8;
+
+  confidenceScore += Math.round(liquidityAnalysis.liquidityScore * 0.18);
+
+  confidenceScore = Math.min(100, confidenceScore);
+
+  let tradeSide: 'long' | 'short' =
+    Math.random() > 0.5 ? 'long' : 'short';
+
+  if (liquidityAnalysis.liquidityBias === 'bullish') {
+    tradeSide = 'long';
+  }
+
+  if (liquidityAnalysis.liquidityBias === 'bearish') {
+    tradeSide = 'short';
+  }
 
   return {
     symbol,
-    tradeSide: Math.random() > 0.5 ? 'long' : 'short',
+    tradeSide,
     confidenceScore,
     setupGrade: gradeFromScore(confidenceScore),
+    liquidityAnalysis,
     conditions: {
       biasAligned,
       volatilityExpansion,
@@ -139,9 +191,7 @@ export async function POST(req: Request) {
           volatilityState: topCandidate.conditions.volatilityExpansion
             ? 'expanding_after_compression'
             : 'compressed',
-          liquidityState: topCandidate.conditions.liquidityMapped
-            ? 'mapped'
-            : 'not_mapped',
+          liquidityState: `${topCandidate.liquidityAnalysis.liquidityBias}:${topCandidate.liquidityAnalysis.sweepDirection}:${topCandidate.liquidityAnalysis.targetLiquidityZone}`,
           cycleState: topCandidate.conditions.cycleAligned
             ? 'aligned'
             : 'not_aligned',
