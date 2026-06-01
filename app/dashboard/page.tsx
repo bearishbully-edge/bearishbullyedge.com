@@ -292,6 +292,7 @@ if (!hasTerminalAccess) {
     name: 'Scanner',
     icon: '🔍',
     desc: 'Multi-Symbol',
+    href: '/dashboard/scanner',
   },
   {
   name: 'Signals',
