@@ -283,112 +283,69 @@ if (!hasTerminalAccess) {
           <MonitoringDashboard />
         </div>
 
-        {/* Phase 3 Systems - Responsive */}
+        {/* BearishBully System Architecture */}
         <div className='mb-6'>
-          <h2 className='text-xl sm:text-2xl font-bold text-white mb-4'>Technical Systems (Phase 3)</h2>
-          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6'>
+          <h2 className='text-xl sm:text-2xl font-bold text-white mb-4'>
+            Market Intelligence Systems
+          </h2>
+
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8'>
             {[
-{
-    name: 'Scanner',
-    icon: '🔍',
-    desc: 'Multi-Symbol Scan',
-    href: '/dashboard/scanner',
-  },
-  {
-    name: 'Signals',
-    icon: '📡',
-    desc: 'Setup Scoring',
-    href: '/dashboard/signals',
-  },
-  {
-    name: 'Executions',
-    icon: '⚔️',
-    desc: 'Trade Feed',
-    href: '/dashboard/executions',
-  },
+              { name: 'Scanner', icon: '🔍', desc: 'Multi-Symbol Scan', href: '/dashboard/scanner' },
+              { name: 'Signals', icon: '📡', desc: 'Setup Scoring', href: '/dashboard/signals' },
+              { name: 'Heatmap', icon: '🔥', desc: 'Market Map', href: '#' },
 
-  {
-    name: 'Cycles',
-    icon: '🔄',
-    desc: 'Market Timing',
-    href: '#',
-  },
-  {
-    name: 'Divergence',
-    icon: '📈',
-    desc: 'Price vs Momentum',
-    href: '#',
-  },
-  {
-    name: 'Volatility',
-    icon: '⚡',
-    desc: 'ATR + Expansion',
-    href: '#',
-  },
+              { name: 'Cycles', icon: '🔄', desc: 'Market Timing', href: '#' },
+              { name: 'Divergence', icon: '📈', desc: 'Price vs Momentum', href: '#' },
+              { name: 'Volatility', icon: '⚡', desc: 'ATR + Expansion', href: '#' },
 
-  {
-    name: 'Liquidity',
-    icon: '💧',
-    desc: 'Order Locations',
-    href: '/dashboard/liquidity',
-  },
-  {
-    name: 'Order Flow',
-    icon: '🌊',
-    desc: 'Footprint + Delta',
-    href: '/dashboard/orderflow',
-  },
-  {
-    name: 'Economic Risk',
-    icon: '📅',
-    desc: 'Event Windows',
-    href: '/dashboard/economic-risk',
-  },
+              { name: 'Liquidity', icon: '💧', desc: 'Order Locations', href: '/dashboard/liquidity' },
+              { name: 'Order Flow', icon: '🌊', desc: 'Footprint + Delta', href: '/dashboard/orderflow' },
+              { name: 'Economic Risk', icon: '📅', desc: 'Event Windows', href: '/dashboard/economic-risk' },
+            ].map(item => (
+              <a key={item.name} href={item.href} className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition block'>
+                <div className='flex flex-col items-center'>
+                  <div className='text-2xl sm:text-3xl mb-2'>{item.icon}</div>
+                  <h3 className='text-xs sm:text-sm font-semibold text-gray-300'>{item.name}</h3>
+                  <p className='text-xs text-gray-500 text-center mt-1'>{item.desc}</p>
+                </div>
+              </a>
+            ))}
+          </div>
 
-  {
-    name: 'Coach',
-    icon: '🧠',
-    desc: 'Discipline OS',
-    href: '/dashboard/coach/checklist',
-  },
-  {
-    name: 'Journal',
-    icon: '📓',
-    desc: 'Trade Review',
-    href: '/dashboard/journal',
-  },
-  {
-    name: 'Performance',
-    icon: '📊',
-    desc: 'Trading Analytics',
-    href: '/dashboard/performance',
-  },
+          <h2 className='text-xl sm:text-2xl font-bold text-white mb-4'>
+            Trading Operations
+          </h2>
 
-  {
-    name: 'Social',
-    icon: '🌐',
-    desc: 'Community & Copy',
-    href: '/dashboard/social',
-  },  
-          ].map(item => (
-            <a
-              key={item.name}
-              href={item.href ?? '#'}
-              className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition block'
-            >
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8'>
+            {[
+              { name: 'Executions', icon: '⚔️', desc: 'Execution Feed', href: '/dashboard/executions' },
+              { name: 'Journal', icon: '📓', desc: 'Trade Review', href: '/dashboard/journal' },
+              { name: 'Performance', icon: '📊', desc: 'Trading Analytics', href: '/dashboard/performance' },
+              { name: 'Coach', icon: '🧠', desc: 'Discipline OS', href: '/dashboard/coach/checklist' },
+            ].map(item => (
+              <a key={item.name} href={item.href} className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition block'>
+                <div className='flex flex-col items-center'>
+                  <div className='text-2xl sm:text-3xl mb-2'>{item.icon}</div>
+                  <h3 className='text-xs sm:text-sm font-semibold text-gray-300'>{item.name}</h3>
+                  <p className='text-xs text-gray-500 text-center mt-1'>{item.desc}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          <h2 className='text-xl sm:text-2xl font-bold text-white mb-4'>
+            Network Layer
+          </h2>
+
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6'>
+            <a href='/dashboard/social' className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition block'>
               <div className='flex flex-col items-center'>
-                <div className='text-2xl sm:text-3xl mb-2'>{item.icon}</div>
-
-                <h3 className='text-xs sm:text-sm font-semibold text-gray-300'>
-                  {item.name}
-                </h3>
-
-                <p className='text-xs text-gray-500 text-center mt-1'>
-                  {item.desc}
-                </p>
+                <div className='text-2xl sm:text-3xl mb-2'>🌐</div>
+                <h3 className='text-xs sm:text-sm font-semibold text-gray-300'>Social</h3>
+                <p className='text-xs text-gray-500 text-center mt-1'>Community & Copy</p>
               </div>
             </a>
-          ))}
           </div>
         </div>
       </div>

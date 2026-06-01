@@ -12,8 +12,8 @@ export default function EconomicRiskPage() {
           </h1>
 
           <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-400">
-            Classical event-risk filter for high-impact reports, volatility windows,
-            news-driven range expansion, and trade timing protection.
+            Classical event-risk filter for high-impact reports, volatility
+            windows, news-driven range expansion, and trade timing protection.
           </p>
         </div>
       </div>
