@@ -288,52 +288,61 @@ if (!hasTerminalAccess) {
           <h2 className='text-xl sm:text-2xl font-bold text-white mb-4'>Technical Systems (Phase 3)</h2>
           <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-6'>
             {[
-  {
+{
     name: 'Scanner',
     icon: '🔍',
-    desc: 'Multi-Symbol',
+    desc: 'Multi-Symbol Scan',
     href: '/dashboard/scanner',
   },
   {
-  name: 'Signals',
-  icon: '📡',
-  desc: 'Signal Engine',
-  href: '/dashboard/signals',
+    name: 'Signals',
+    icon: '📡',
+    desc: 'Setup Scoring',
+    href: '/dashboard/signals',
+  },
+  {
+    name: 'Executions',
+    icon: '⚔️',
+    desc: 'Trade Feed',
+    href: '/dashboard/executions',
   },
 
   {
     name: 'Cycles',
     icon: '🔄',
-    desc: 'Expansion',
+    desc: 'Market Timing',
+    href: '#',
   },
-  {
-    name: 'Heatmap',
-    icon: '🔥',
-    desc: 'Smart Money',
-  },
-
   {
     name: 'Divergence',
     icon: '📈',
-    desc: 'RSI/MACD',
+    desc: 'Price vs Momentum',
+    href: '#',
   },
   {
     name: 'Volatility',
     icon: '⚡',
-    desc: 'ATR + Events',
+    desc: 'ATR + Expansion',
+    href: '#',
   },
-    
+
   {
-  name: 'Liquidity',
-  icon: '💧',
-  desc: 'Liquidity Mapping',
-  href: '/dashboard/liquidity',
+    name: 'Liquidity',
+    icon: '💧',
+    desc: 'Order Locations',
+    href: '/dashboard/liquidity',
   },
   {
-  name: 'Orderflow',
-  icon: '🌊',
-  desc: 'Flow Engine',
-  href: '/dashboard/orderflow',
+    name: 'Order Flow',
+    icon: '🌊',
+    desc: 'Footprint + Delta',
+    href: '/dashboard/orderflow',
+  },
+  {
+    name: 'Economic Risk',
+    icon: '📅',
+    desc: 'Event Windows',
+    href: '/dashboard/economic-risk',
   },
 
   {
@@ -348,25 +357,18 @@ if (!hasTerminalAccess) {
     desc: 'Trade Review',
     href: '/dashboard/journal',
   },
-
   {
-  name: 'Executions',
-  icon: '⚔️',
-  desc: 'Execution Feed',
-  href: '/dashboard/executions',
-  },
-  {
-  name: 'Performance',
-  icon: '📈',
-  desc: 'Discipline Analytics',
-  href: '/dashboard/performance',
+    name: 'Performance',
+    icon: '📊',
+    desc: 'Trading Analytics',
+    href: '/dashboard/performance',
   },
 
   {
-  name: 'Social',
-  icon: '🌐',
-  desc: 'Community & Copy',
-  href: '/dashboard/social',
+    name: 'Social',
+    icon: '🌐',
+    desc: 'Community & Copy',
+    href: '/dashboard/social',
   },  
           ].map(item => (
             <a
