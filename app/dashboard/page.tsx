@@ -262,11 +262,25 @@ if (!hasTerminalAccess) {
         <MarketIntelligenceProvider>
           <div className='mb-6'>
             <h2 className='text-xl sm:text-2xl font-bold text-white mb-4'>Market Context</h2>
-            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4'>
               <DirectionalBias />
               <COTOverlay />
               <EconomicCalendar />
               <CorrelatedAssets />
+              <div className='bg-gray-800 border border-gray-700 rounded-lg p-4'>
+                <h3 className='text-sm font-semibold text-gray-300 mb-2'>
+                  Heatmap
+                </h3>
+
+                <div className='h-full flex items-center justify-center'>
+                  <div className='text-center'>
+                    <div className='text-4xl mb-2'>🔥</div>
+                    <p className='text-sm text-gray-400'>
+                      Market Heatmap
+                    </p>
+                  </div>
+                </div>
+              </div>              
               <div className='bg-gray-800 border border-gray-700 rounded-lg p-4'>
                 <h3 className='text-sm font-semibold text-gray-300 mb-2'>Volume Delta</h3>
                 <div className='space-y-2'>
@@ -293,11 +307,15 @@ if (!hasTerminalAccess) {
             {[
               { name: 'Scanner', icon: '🔍', desc: 'Multi-Symbol Scan', href: '/dashboard/scanner' },
               { name: 'Signals', icon: '📡', desc: 'Setup Scoring', href: '/dashboard/signals' },
-              { name: 'Heatmap', icon: '🔥', desc: 'Market Map', href: '#' },
+              { name: 'Bias', icon: '🧭', desc: 'Market Bias', href: '/dashboard/bias' },
 
+              { name: 'Trend', icon: '📉', desc: 'Market Direction', href: '/dashboard/trend' },
               { name: 'Cycles', icon: '🔄', desc: 'Market Timing', href: '#' },
+              { name: 'Momentum', icon: '🚀', desc: 'MACD + Stochastic', href: '/dashboard/momentum' },
+
               { name: 'Divergence', icon: '📈', desc: 'Price vs Momentum', href: '#' },
               { name: 'Volatility', icon: '⚡', desc: 'ATR + Expansion', href: '#' },
+              { name: 'Market Structure', icon: '🏗️', desc: 'Price Framework', href: '/dashboard/market-structure' },
 
               { name: 'Liquidity', icon: '💧', desc: 'Order Locations', href: '/dashboard/liquidity' },
               { name: 'Order Flow', icon: '🌊', desc: 'Footprint + Delta', href: '/dashboard/orderflow' },
@@ -317,12 +335,19 @@ if (!hasTerminalAccess) {
             Trading Operations
           </h2>
 
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-8'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8'>
             {[
               { name: 'Executions', icon: '⚔️', desc: 'Execution Feed', href: '/dashboard/executions' },
+
+              { name: 'Position Risk', icon: '🛡️', desc: 'Risk Controls', href: '/dashboard/position-risk' },
+
               { name: 'Journal', icon: '📓', desc: 'Trade Review', href: '/dashboard/journal' },
+
               { name: 'Performance', icon: '📊', desc: 'Trading Analytics', href: '/dashboard/performance' },
+
               { name: 'Coach', icon: '🧠', desc: 'Discipline OS', href: '/dashboard/coach/checklist' },
+
+              { name: 'Playbook', icon: '📘', desc: 'Strategy Library', href: '/dashboard/playbook' },
             ].map(item => (
               <a key={item.name} href={item.href} className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition block'>
                 <div className='flex flex-col items-center'>
