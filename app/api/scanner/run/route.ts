@@ -23,6 +23,16 @@ import {
   buildSyntheticMarketStructureInput,
 } from '@/lib/market-engines/marketStructureBuilder';
 
+import {
+  resolveConflicts,
+  type ConflictResolution,
+} from '@/lib/market-engines/conflictResolver';
+
+import {
+  analyzeMomentum,
+  type MomentumAnalysis,
+} from '@/lib/market-engines/momentumEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -39,7 +49,9 @@ type ScanCandidate = {
   liquidityAnalysis: LiquidityAnalysis;
   trendAnalysis: TrendAnalysis;
   divergenceAnalysis: DivergenceAnalysis;
+  momentumAnalysis: MomentumAnalysis;
   marketStructureAnalysis: MarketStructureAnalysis;
+  conflictResolution: ConflictResolution;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -136,6 +148,21 @@ function buildSyntheticDivergenceInput(symbol: string) {
   };
 }
 
+function buildSyntheticMomentumInput(symbol: string) {
+  const seed = symbol
+    .split('')
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return {
+    symbol,
+    macdBullish: seed % 2 === 0,
+    stochasticBullish: seed % 3 !== 0,
+    aboveZeroLine: seed % 5 !== 0,
+    momentumIncreasing: seed % 4 === 0,
+    momentumDecreasing: seed % 7 === 0,
+  };
+}
+
 function scoreCandidate(symbol: string): ScanCandidate {
 const trendAnalysis = analyzeTrend(
   buildSyntheticTrendInput(symbol),
@@ -145,6 +172,9 @@ const marketStructureAnalysis =
   analyzeMarketStructure(
     buildSyntheticMarketStructureInput(symbol),
   );
+const momentumAnalysis = analyzeMomentum(
+  buildSyntheticMomentumInput(symbol),
+);  
 const biasAligned = trendAnalysis.trendAligned;
   const volatilityExpansion = Math.random() > 0.25;
   const cycleAligned = Math.random() > 0.3;
@@ -182,6 +212,14 @@ const trendConflict =
     buildSyntheticLiquidityInput(symbol),
   );
 
+  const conflictResolution = resolveConflicts(
+  trendAnalysis,
+  marketStructureAnalysis,
+  liquidityAnalysis,
+  divergenceAnalysis,
+  momentumAnalysis,
+  );
+
   const liquidityMapped =
     liquidityAnalysis.liquidityScore >= 50 ||
     liquidityAnalysis.sweepDetected ||
@@ -196,6 +234,9 @@ const trendConflict =
   if (biasAligned) confidenceScore += 10;
 
   confidenceScore += Math.round(trendAnalysis.trendScore * 0.16);
+  confidenceScore += Math.round(
+  momentumAnalysis.momentumScore * 0.12,
+  );
   if (volatilityExpansion) confidenceScore += 20;
   if (liquidityMapped) confidenceScore += 10;
   if (
@@ -216,21 +257,17 @@ const trendConflict =
   confidenceScore -= 10;
   }
 
+  confidenceScore += conflictResolution.confidenceAdjustment;
+
   confidenceScore = Math.max(
   0,
   Math.min(100, confidenceScore),
   );
 
   let tradeSide: 'long' | 'short' =
-    Math.random() > 0.5 ? 'long' : 'short';
-
-  if (liquidityAnalysis.liquidityBias === 'bullish') {
-    tradeSide = 'long';
-  }
-
-  if (liquidityAnalysis.liquidityBias === 'bearish') {
-    tradeSide = 'short';
-  }
+  conflictResolution.dominantBias === 'bearish'
+    ? 'short'
+    : 'long';
 
   return {
     symbol,
@@ -240,7 +277,9 @@ const trendConflict =
     liquidityAnalysis,
     trendAnalysis,
     marketStructureAnalysis,
+    momentumAnalysis,
     divergenceAnalysis,
+    conflictResolution,
     conditions: {
       biasAligned,
       volatilityExpansion,
