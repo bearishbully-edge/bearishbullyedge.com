@@ -14,6 +14,15 @@ import {
   type DivergenceAnalysis,
 } from '@/lib/market-engines/divergenceEngine';
 
+import {
+  analyzeMarketStructure,
+  type MarketStructureAnalysis,
+} from '@/lib/market-engines/marketStructureEngine';
+
+import {
+  buildSyntheticMarketStructureInput,
+} from '@/lib/market-engines/marketStructureBuilder';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -30,6 +39,7 @@ type ScanCandidate = {
   liquidityAnalysis: LiquidityAnalysis;
   trendAnalysis: TrendAnalysis;
   divergenceAnalysis: DivergenceAnalysis;
+  marketStructureAnalysis: MarketStructureAnalysis;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -130,6 +140,11 @@ function scoreCandidate(symbol: string): ScanCandidate {
 const trendAnalysis = analyzeTrend(
   buildSyntheticTrendInput(symbol),
 );
+
+const marketStructureAnalysis =
+  analyzeMarketStructure(
+    buildSyntheticMarketStructureInput(symbol),
+  );
 const biasAligned = trendAnalysis.trendAligned;
   const volatilityExpansion = Math.random() > 0.25;
   const cycleAligned = Math.random() > 0.3;
@@ -174,12 +189,20 @@ const trendConflict =
 
   let confidenceScore = 0;
 
+  confidenceScore += Math.round(
+  marketStructureAnalysis.structureScore * 0.15,
+  );
+
   if (biasAligned) confidenceScore += 10;
 
   confidenceScore += Math.round(trendAnalysis.trendScore * 0.16);
   if (volatilityExpansion) confidenceScore += 20;
   if (liquidityMapped) confidenceScore += 10;
-  if (cycleAligned) confidenceScore += 14;
+  if (
+  marketStructureAnalysis.continuationBias
+  ) {
+  confidenceScore += 14;
+  }
   if (divergenceConfirmed) confidenceScore += 5;
 
   confidenceScore += Math.round(
@@ -216,6 +239,7 @@ const trendConflict =
     setupGrade: gradeFromScore(confidenceScore),
     liquidityAnalysis,
     trendAnalysis,
+    marketStructureAnalysis,
     divergenceAnalysis,
     conditions: {
       biasAligned,
@@ -293,9 +317,8 @@ export async function POST(req: Request) {
             ? 'expanding_after_compression'
             : 'compressed',
           liquidityState: `${topCandidate.liquidityAnalysis.liquidityBias}:${topCandidate.liquidityAnalysis.sweepDirection}:${topCandidate.liquidityAnalysis.targetLiquidityZone}`,
-          cycleState: topCandidate.conditions.cycleAligned
-            ? 'aligned'
-            : 'not_aligned',
+          cycleState:
+            topCandidate.marketStructureAnalysis.structureState,
           divergenceState:
             `${topCandidate.divergenceAnalysis.divergenceType}:${topCandidate.divergenceAnalysis.divergenceBias}`,
           economicRiskState: topCandidate.conditions.economicRiskClear
