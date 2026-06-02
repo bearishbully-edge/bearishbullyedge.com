@@ -9,6 +9,11 @@ import {
   type TrendAnalysis,
 } from '@/lib/market-engines/trendEngine';
 
+import {
+  analyzeDivergence,
+  type DivergenceAnalysis,
+} from '@/lib/market-engines/divergenceEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -24,6 +29,7 @@ type ScanCandidate = {
   setupGrade: string;
   liquidityAnalysis: LiquidityAnalysis;
   trendAnalysis: TrendAnalysis;
+  divergenceAnalysis: DivergenceAnalysis;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -92,6 +98,34 @@ function buildSyntheticTrendInput(symbol: string) {
   };
 }
 
+function buildSyntheticDivergenceInput(symbol: string) {
+  const seed = symbol
+    .split('')
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return {
+    symbol,
+
+    priceMakingHigherHigh: seed % 2 === 0,
+    priceMakingLowerLow: seed % 3 === 0,
+
+    priceMakingHigherLow: seed % 5 === 0,
+    priceMakingLowerHigh: seed % 7 === 0,
+
+    momentumMakingHigherHigh: seed % 11 === 0,
+    momentumMakingLowerLow: seed % 13 === 0,
+
+    momentumMakingHigherLow: seed % 17 === 0,
+    momentumMakingLowerHigh: seed % 19 === 0,
+
+    volumeIncreasing: seed % 2 === 0,
+    volumeDecreasing: seed % 3 === 0,
+
+    deltaIncreasing: seed % 5 === 0,
+    deltaDecreasing: seed % 7 === 0,
+  };
+}
+
 function scoreCandidate(symbol: string): ScanCandidate {
 const trendAnalysis = analyzeTrend(
   buildSyntheticTrendInput(symbol),
@@ -99,7 +133,34 @@ const trendAnalysis = analyzeTrend(
 const biasAligned = trendAnalysis.trendAligned;
   const volatilityExpansion = Math.random() > 0.25;
   const cycleAligned = Math.random() > 0.3;
-  const divergenceConfirmed = Math.random() > 0.35;
+  const divergenceAnalysis = analyzeDivergence(
+    buildSyntheticDivergenceInput(symbol),
+  );
+
+const divergenceConfirmed =
+  divergenceAnalysis.divergenceDetected;
+
+const trendBullish =
+  trendAnalysis.trendDirection === 'bullish';
+
+const trendBearish =
+  trendAnalysis.trendDirection === 'bearish';
+
+const divergenceBullish =
+  divergenceAnalysis.divergenceBias ===
+    'bullish_reversal' ||
+  divergenceAnalysis.divergenceBias ===
+    'bullish_continuation';
+
+const divergenceBearish =
+  divergenceAnalysis.divergenceBias ===
+    'bearish_reversal' ||
+  divergenceAnalysis.divergenceBias ===
+    'bearish_continuation';
+
+const trendConflict =
+  (trendBullish && divergenceBearish) ||
+  (trendBearish && divergenceBullish);
   const economicRiskClear = Math.random() > 0.15;
 
   const liquidityAnalysis = analyzeLiquidity(
@@ -119,12 +180,23 @@ const biasAligned = trendAnalysis.trendAligned;
   if (volatilityExpansion) confidenceScore += 20;
   if (liquidityMapped) confidenceScore += 10;
   if (cycleAligned) confidenceScore += 14;
-  if (divergenceConfirmed) confidenceScore += 12;
+  if (divergenceConfirmed) confidenceScore += 5;
+
+  confidenceScore += Math.round(
+    divergenceAnalysis.divergenceScore * 0.10,
+  );
   if (economicRiskClear) confidenceScore += 8;
 
   confidenceScore += Math.round(liquidityAnalysis.liquidityScore * 0.18);
 
-  confidenceScore = Math.min(100, confidenceScore);
+  if (trendConflict) {
+  confidenceScore -= 10;
+  }
+
+  confidenceScore = Math.max(
+  0,
+  Math.min(100, confidenceScore),
+  );
 
   let tradeSide: 'long' | 'short' =
     Math.random() > 0.5 ? 'long' : 'short';
@@ -144,6 +216,7 @@ const biasAligned = trendAnalysis.trendAligned;
     setupGrade: gradeFromScore(confidenceScore),
     liquidityAnalysis,
     trendAnalysis,
+    divergenceAnalysis,
     conditions: {
       biasAligned,
       volatilityExpansion,
@@ -223,9 +296,8 @@ export async function POST(req: Request) {
           cycleState: topCandidate.conditions.cycleAligned
             ? 'aligned'
             : 'not_aligned',
-          divergenceState: topCandidate.conditions.divergenceConfirmed
-            ? 'confirmed'
-            : 'none',
+          divergenceState:
+            `${topCandidate.divergenceAnalysis.divergenceType}:${topCandidate.divergenceAnalysis.divergenceBias}`,
           economicRiskState: topCandidate.conditions.economicRiskClear
             ? 'clear'
             : 'elevated',
