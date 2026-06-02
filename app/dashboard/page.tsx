@@ -250,13 +250,13 @@ if (!hasTerminalAccess) {
         {/* Order Flow - Mobile Responsive */}
         <div className='mb-6'>
           <a
-            href="/dashboard/orderflow"
+            href="/dashboard/workspace"
             className="block bg-gray-800 border-2 border-purple-500 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition"
           >
-            <h3 className='text-base sm:text-lg font-semibold text-white mb-4'>⚡ Order Flow (NinjaTrader Integration)</h3>
+            <h3 className='text-base sm:text-lg font-semibold text-white mb-4'>⚡ Execution Workspace</h3>
             <div className='text-center py-6 sm:py-8'>
               <div className='text-3xl sm:text-4xl mb-2'>📊</div>
-              <p className='text-sm sm:text-base text-gray-400'>Footprint Chart Integration Ready</p>
+              <p className='text-sm sm:text-base text-gray-400'>Chart • Footprint • DOM • Tape • Positions</p>
             </div>
           </a>
         </div>
