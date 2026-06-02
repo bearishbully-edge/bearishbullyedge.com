@@ -52,6 +52,13 @@ export default function OrderflowPage() {
           <div className="mt-10 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 p-5 text-yellow-300">
             Phase 2 Infrastructure Placeholder
           </div>
+
+          <a
+            href="/dashboard"
+            className="mt-10 inline-block rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-300 hover:bg-slate-800 hover:text-white"
+          >
+            Back to Terminal
+          </a>
         </div>
       </div>
     </main>
