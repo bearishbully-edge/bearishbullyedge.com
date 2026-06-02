@@ -267,7 +267,10 @@ if (!hasTerminalAccess) {
               <COTOverlay />
               <EconomicCalendar />
               <CorrelatedAssets />
-              <div className='bg-gray-800 border border-gray-700 rounded-lg p-4'>
+              <a
+                href="/dashboard/heatmap"
+                className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-emerald-400 transition block"
+              >
                 <h3 className='text-sm font-semibold text-gray-300 mb-2'>
                   Heatmap
                 </h3>
@@ -275,12 +278,13 @@ if (!hasTerminalAccess) {
                 <div className='h-full flex items-center justify-center'>
                   <div className='text-center'>
                     <div className='text-4xl mb-2'>🔥</div>
+
                     <p className='text-sm text-gray-400'>
                       Market Heatmap
                     </p>
                   </div>
                 </div>
-              </div>              
+              </a>              
               <div className='bg-gray-800 border border-gray-700 rounded-lg p-4'>
                 <h3 className='text-sm font-semibold text-gray-300 mb-2'>Volume Delta</h3>
                 <div className='space-y-2'>
