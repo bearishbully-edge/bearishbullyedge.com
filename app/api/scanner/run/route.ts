@@ -4,6 +4,11 @@ import {
   type LiquidityAnalysis,
 } from '@/lib/market-engines/liquidityEngine';
 
+import {
+  analyzeTrend,
+  type TrendAnalysis,
+} from '@/lib/market-engines/trendEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -18,6 +23,7 @@ type ScanCandidate = {
   confidenceScore: number;
   setupGrade: string;
   liquidityAnalysis: LiquidityAnalysis;
+  trendAnalysis: TrendAnalysis;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -68,8 +74,29 @@ function buildSyntheticLiquidityInput(symbol: string) {
   };
 }
 
+function buildSyntheticTrendInput(symbol: string) {
+  const seed = symbol
+    .split('')
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return {
+    symbol,
+    priceAbove10Sma: seed % 2 === 0,
+    priceAbove20Ema: seed % 3 !== 0,
+    priceAbove50Sma: seed % 5 !== 0,
+    higherHighs: seed % 4 === 0,
+    higherLows: seed % 6 !== 0,
+    lowerHighs: seed % 7 === 0,
+    lowerLows: seed % 5 === 0,
+    rangeBound: seed % 11 === 0,
+  };
+}
+
 function scoreCandidate(symbol: string): ScanCandidate {
-  const biasAligned = Math.random() > 0.2;
+const trendAnalysis = analyzeTrend(
+  buildSyntheticTrendInput(symbol),
+);
+const biasAligned = trendAnalysis.trendAligned;
   const volatilityExpansion = Math.random() > 0.25;
   const cycleAligned = Math.random() > 0.3;
   const divergenceConfirmed = Math.random() > 0.35;
@@ -86,7 +113,9 @@ function scoreCandidate(symbol: string): ScanCandidate {
 
   let confidenceScore = 0;
 
-  if (biasAligned) confidenceScore += 18;
+  if (biasAligned) confidenceScore += 10;
+
+  confidenceScore += Math.round(trendAnalysis.trendScore * 0.16);
   if (volatilityExpansion) confidenceScore += 20;
   if (liquidityMapped) confidenceScore += 10;
   if (cycleAligned) confidenceScore += 14;
@@ -114,6 +143,7 @@ function scoreCandidate(symbol: string): ScanCandidate {
     confidenceScore,
     setupGrade: gradeFromScore(confidenceScore),
     liquidityAnalysis,
+    trendAnalysis,
     conditions: {
       biasAligned,
       volatilityExpansion,
@@ -185,9 +215,7 @@ export async function POST(req: Request) {
           pnl: topCandidate.confidenceScore >= 80 ? 420 : -180,
           confidenceScore: topCandidate.confidenceScore,
           setupGrade: topCandidate.setupGrade,
-          biasState: topCandidate.conditions.biasAligned
-            ? 'aligned'
-            : 'misaligned',
+          biasState: `${topCandidate.trendAnalysis.trendDirection}:${topCandidate.trendAnalysis.trendState}`,
           volatilityState: topCandidate.conditions.volatilityExpansion
             ? 'expanding_after_compression'
             : 'compressed',
