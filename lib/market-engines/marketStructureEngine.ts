@@ -90,25 +90,29 @@ export function analyzeMarketStructure(
     continuationBias = true;
   }
 
-  if (
-    input.breakoutAttempt &&
-    !input.breakoutConfirmed
-  ) {
-    structureState = 'failed_breakout';
-    structureScore = 75;
-    bearishStructure = true;
-    reversalBias = true;
-  }
+if (
+input.breakoutAttempt &&
+!input.breakoutConfirmed
+) {
+structureState = 'failed_breakout';
+structureScore = 75;
+bullishStructure = false;
+bearishStructure = true;
+continuationBias = false;
+reversalBias = true;
+}
 
-  if (
-    input.breakdownAttempt &&
-    !input.breakdownConfirmed
-  ) {
-    structureState = 'failed_breakdown';
-    structureScore = 75;
-    bullishStructure = true;
-    reversalBias = true;
-  }
+if (
+  input.breakdownAttempt &&
+  !input.breakdownConfirmed
+) {
+  structureState = 'failed_breakdown';
+  structureScore = 75;
+  bullishStructure = true;
+  bearishStructure = false;
+  continuationBias = false;
+  reversalBias = true;
+}
 
   if (input.rangeBound) {
     structureState = 'range';
