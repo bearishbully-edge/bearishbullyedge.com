@@ -310,11 +310,11 @@ if (!hasTerminalAccess) {
               { name: 'Bias', icon: '🧭', desc: 'Market Bias', href: '/dashboard/bias' },
 
               { name: 'Trend', icon: '📉', desc: 'Market Direction', href: '/dashboard/trend' },
-              { name: 'Cycles', icon: '🔄', desc: 'Market Timing', href: '#' },
+              { name: 'Cycles', icon: '🔄', desc: 'Market Timing', href: '/dashboard/cycles' },
               { name: 'Momentum', icon: '🚀', desc: 'MACD + Stochastic', href: '/dashboard/momentum' },
 
-              { name: 'Divergence', icon: '📈', desc: 'Price vs Momentum', href: '#' },
-              { name: 'Volatility', icon: '⚡', desc: 'ATR + Expansion', href: '#' },
+              { name: 'Divergence', icon: '📈', desc: 'Price vs Momentum', href: '/dashboard/divergence' },
+              { name: 'Volatility', icon: '⚡', desc: 'ATR + Expansion', href: '/dashboard/volatility' },
               { name: 'Market Structure', icon: '🏗️', desc: 'Price Framework', href: '/dashboard/market-structure' },
 
               { name: 'Liquidity', icon: '💧', desc: 'Order Locations', href: '/dashboard/liquidity' },
@@ -363,8 +363,8 @@ if (!hasTerminalAccess) {
             Network Layer
           </h2>
 
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6'>
-            <a href='/dashboard/social' className='bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-6 hover:border-emerald-400 transition block'>
+          <div className='grid grid-cols-1 gap-3 sm:gap-6'>
+            <a href='/dashboard/social' className='w-full bg-gray-800 border border-gray-700 rounded-lg p-6 sm:p-8 hover:border-emerald-400 transition block'>
               <div className='flex flex-col items-center'>
                 <div className='text-2xl sm:text-3xl mb-2'>🌐</div>
                 <h3 className='text-xs sm:text-sm font-semibold text-gray-300'>Social</h3>
