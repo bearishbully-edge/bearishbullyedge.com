@@ -29,6 +29,20 @@ import {
 } from '@/lib/market-engines/conflictResolver';
 
 import {
+  resolveDivergenceLocation,
+  type DivergenceLocationAnalysis,
+} from '@/lib/market-engines/divergenceLocationResolver';
+
+import {
+  type ScannerProbabilityContext,
+  type ProbabilityEstimate,
+} from '@/lib/market-engines/probabilityContext';
+
+import {
+  estimateSetupProbability,
+} from '@/lib/market-engines/probabilityEngine';
+
+import {
   analyzeMomentum,
   type MomentumAnalysis,
 } from '@/lib/market-engines/momentumEngine';
@@ -52,6 +66,8 @@ type ScanCandidate = {
   momentumAnalysis: MomentumAnalysis;
   marketStructureAnalysis: MarketStructureAnalysis;
   conflictResolution: ConflictResolution;
+  divergenceLocationAnalysis: DivergenceLocationAnalysis;
+  probabilityEstimate: ProbabilityEstimate;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -212,12 +228,56 @@ const trendConflict =
     buildSyntheticLiquidityInput(symbol),
   );
 
-  const conflictResolution = resolveConflicts(
+const divergenceLocationAnalysis =
+  resolveDivergenceLocation(
+    divergenceAnalysis,
+    marketStructureAnalysis,
+  );
+
+const conflictResolution = resolveConflicts(
   trendAnalysis,
   marketStructureAnalysis,
   liquidityAnalysis,
   divergenceAnalysis,
   momentumAnalysis,
+);
+
+const probabilityContext: ScannerProbabilityContext = {
+  symbol,
+
+  trendState: trendAnalysis.trendState,
+  trendDirection: trendAnalysis.trendDirection,
+
+  momentumState: momentumAnalysis.momentumState,
+
+  structureState:
+    marketStructureAnalysis.structureState,
+
+  liquidityBias:
+    liquidityAnalysis.liquidityBias,
+
+  sweepDirection:
+    liquidityAnalysis.sweepDirection,
+
+  divergenceType:
+    divergenceAnalysis.divergenceType,
+
+  divergenceBias:
+    divergenceAnalysis.divergenceBias,
+
+  divergenceLocation:
+    divergenceLocationAnalysis.location,
+
+  reversalQuality:
+    divergenceLocationAnalysis.reversalQuality,
+
+  continuationQuality:
+    divergenceLocationAnalysis.continuationQuality,
+};
+
+const probabilityEstimate =
+  estimateSetupProbability(
+    probabilityContext,
   );
 
   const liquidityMapped =
@@ -264,8 +324,8 @@ const trendConflict =
   Math.min(100, confidenceScore),
   );
 
-  let tradeSide: 'long' | 'short' =
-  conflictResolution.dominantBias === 'bearish'
+let tradeSide: 'long' | 'short' =
+  probabilityEstimate.probabilityBias === 'short'
     ? 'short'
     : 'long';
 
@@ -280,6 +340,8 @@ const trendConflict =
     momentumAnalysis,
     divergenceAnalysis,
     conflictResolution,
+    divergenceLocationAnalysis,
+    probabilityEstimate,
     conditions: {
       biasAligned,
       volatilityExpansion,
