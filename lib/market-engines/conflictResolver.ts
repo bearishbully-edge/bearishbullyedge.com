@@ -68,13 +68,13 @@ export function resolveConflicts(
   if (bullishVotes > bearishVotes) dominantBias = 'bullish';
   if (bearishVotes > bullishVotes) dominantBias = 'bearish';
 
-  let confidenceAdjustment = -15;
+  let confidenceAdjustment = -25;
 
-  if (voteSpread >= 4) {
-    confidenceAdjustment = 15;
-  } else if (voteSpread >= 2) {
-    confidenceAdjustment = 8;
-  }
+if (voteSpread >= 4) {
+confidenceAdjustment = 12;
+} else if (voteSpread >= 2) {
+confidenceAdjustment = 4;
+}
 
   return {
     conflictDetected,
