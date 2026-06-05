@@ -43,6 +43,22 @@ import {
 } from '@/lib/market-engines/probabilityEngine';
 
 import {
+  buildContextFingerprint,
+} from '@/lib/market-engines/contextFingerprintEngine';
+
+import {
+  probabilityRepository,
+} from '@/lib/market-engines/probabilityRepository';
+
+import {
+  calculateHistoricalProbability,
+} from '@/lib/market-engines/historicalProbabilityEngine';
+
+import {
+  blendProbabilities,
+} from '@/lib/market-engines/probabilityBlendEngine';
+
+import {
   buildCycleAnalysis,
 } from '@/lib/market-engines/cycleBuilder';
 
@@ -86,6 +102,15 @@ type ScanCandidate = {
   conflictResolution: ConflictResolution;
   divergenceLocationAnalysis: DivergenceLocationAnalysis;
   probabilityEstimate: ProbabilityEstimate;
+
+  historicalProbability:
+    ReturnType<typeof calculateHistoricalProbability> | null;
+
+  blendedProbability:
+    ReturnType<typeof blendProbabilities> | null;
+
+  contextFingerprint: string;
+
   cycleAnalysis: CycleAnalysis;
 
   cyclePhaseResolution:
@@ -305,6 +330,31 @@ const probabilityEstimate =
     probabilityContext,
   );
 
+const contextFingerprint =
+  buildContextFingerprint(
+    probabilityContext,
+  );
+
+  const historicalOutcome =
+  probabilityRepository[
+    contextFingerprint
+  ];
+
+  const historicalProbability =
+  historicalOutcome
+    ? calculateHistoricalProbability(
+        historicalOutcome,
+      )
+    : null;
+
+const blendedProbability =
+  historicalProbability
+    ? blendProbabilities(
+        probabilityEstimate,
+        historicalProbability,
+      )
+    : null;
+
   const cycleAnalysis =
   buildCycleAnalysis(
     trendAnalysis,
@@ -379,6 +429,13 @@ if (
 }
 
 if (
+  blendedProbability?.confidence ===
+  'high'
+) {
+  confidenceScore += 5;
+}
+
+if (
   cycleAnalysis.continuationProbability >=
   80
 ) {
@@ -421,6 +478,10 @@ let tradeSide: 'long' | 'short' =
     conflictResolution,
     divergenceLocationAnalysis,
     probabilityEstimate,
+
+    historicalProbability,
+    blendedProbability,
+    contextFingerprint,
 
     cycleAnalysis,
     cyclePhaseResolution,
