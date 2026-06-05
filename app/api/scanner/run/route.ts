@@ -43,6 +43,24 @@ import {
 } from '@/lib/market-engines/probabilityEngine';
 
 import {
+  buildCycleAnalysis,
+} from '@/lib/market-engines/cycleBuilder';
+
+import {
+  resolveCyclePhase,
+  type CyclePhaseResolution,
+} from '@/lib/market-engines/cyclePhaseResolver';
+
+import {
+  forecastCycle,
+  type CycleForecast,
+} from '@/lib/market-engines/cycleForecastEngine';
+
+import type {
+  CycleAnalysis,
+} from '@/lib/market-engines/cycleEngine';
+
+import {
   analyzeMomentum,
   type MomentumAnalysis,
 } from '@/lib/market-engines/momentumEngine';
@@ -68,6 +86,13 @@ type ScanCandidate = {
   conflictResolution: ConflictResolution;
   divergenceLocationAnalysis: DivergenceLocationAnalysis;
   probabilityEstimate: ProbabilityEstimate;
+  cycleAnalysis: CycleAnalysis;
+
+  cyclePhaseResolution:
+  CyclePhaseResolution;
+
+  cycleForecast:
+  CycleForecast;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -280,6 +305,26 @@ const probabilityEstimate =
     probabilityContext,
   );
 
+  const cycleAnalysis =
+  buildCycleAnalysis(
+    trendAnalysis,
+    momentumAnalysis,
+    liquidityAnalysis,
+    divergenceAnalysis,
+    marketStructureAnalysis,
+  );
+
+const cyclePhaseResolution =
+  resolveCyclePhase(
+    cycleAnalysis,
+  );
+
+const cycleForecast =
+  forecastCycle(
+    cycleAnalysis,
+    cyclePhaseResolution,
+  );
+
   const liquidityMapped =
     liquidityAnalysis.liquidityScore >= 50 ||
     liquidityAnalysis.sweepDetected ||
@@ -319,6 +364,40 @@ const probabilityEstimate =
 
   confidenceScore += conflictResolution.confidenceAdjustment;
 
+if (
+  probabilityEstimate.probabilityConfidence ===
+  'high'
+) {
+  confidenceScore += 10;
+}
+
+if (
+  probabilityEstimate.probabilityConfidence ===
+  'medium'
+) {
+  confidenceScore += 5;
+}
+
+if (
+  cycleAnalysis.continuationProbability >=
+  80
+) {
+  confidenceScore += 5;
+}
+
+if (
+  cyclePhaseResolution.exhaustionRisk
+) {
+  confidenceScore -= 10;
+}
+
+if (
+  cycleForecast.transitionProbability >=
+  70
+) {
+  confidenceScore -= 5;
+}
+
   confidenceScore = Math.max(
   0,
   Math.min(100, confidenceScore),
@@ -342,7 +421,12 @@ let tradeSide: 'long' | 'short' =
     conflictResolution,
     divergenceLocationAnalysis,
     probabilityEstimate,
-    conditions: {
+
+    cycleAnalysis,
+    cyclePhaseResolution,
+    cycleForecast,
+
+      conditions: {
       biasAligned,
       volatilityExpansion,
       liquidityMapped,
