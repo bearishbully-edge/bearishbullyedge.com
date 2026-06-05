@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import {
+  recordTradeOutcome,
+} from '@/lib/market-engines/tradeOutcomeRecorder';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -174,6 +177,18 @@ const { data: execution, error: executionError } = await executionQuery;
     );
   }
 
+  const contextFingerprint =
+  [
+    executionPayload.bias_state,
+    executionPayload.volatility_state,
+    executionPayload.liquidity_state,
+    executionPayload.cycle_state,
+    executionPayload.divergence_state,
+    executionPayload.economic_risk_state,
+  ]
+    .filter(Boolean)
+    .join('|');
+
   const journalNotes = [
     `Auto-created from execution ${execution.id}.`,
     `Execution source: ${executionPayload.execution_source}.`,
@@ -200,9 +215,13 @@ if (existingJournalError) {
   );
 }
 
+
+
 if (existingJournalEntry) {
+  
   return NextResponse.json({
     ok: true,
+    contextFingerprint,
     executionId: execution.id,
     journalEntryId: existingJournalEntry.id,
     reused: true,
@@ -240,6 +259,22 @@ const { data: journalEntry, error: journalError } = await supabase
   .select('id')
   .single();
 
+  if (
+  executionPayload.status === 'closed'
+) {
+  recordTradeOutcome({
+    contextFingerprint,
+
+    won:
+      (executionPayload.pnl ?? 0) > 0,
+
+    pnlR:
+      Math.abs(
+        executionPayload.pnl ?? 0,
+      ) / 100,
+  });
+}
+
   if (journalError || !journalEntry) {
     return NextResponse.json(
       {
@@ -254,6 +289,7 @@ const { data: journalEntry, error: journalError } = await supabase
 
   return NextResponse.json({
     ok: true,
+    contextFingerprint,
     executionId: execution.id,
     journalEntryId: journalEntry.id,
   });
