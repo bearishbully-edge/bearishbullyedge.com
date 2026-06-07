@@ -81,6 +81,44 @@ import {
   type MomentumAnalysis,
 } from '@/lib/market-engines/momentumEngine';
 
+import {
+  loadHistoricalProbability,
+} from '@/lib/market-engines/historicalProbabilityLoader';
+
+import {
+  buildTimeframeContext,
+} from '@/lib/market-engines/timeframeContextBuilder';
+
+import {
+  analyzeTimeDecay,
+  type TimeDecayAnalysis,
+} from '@/lib/market-engines/timeDecayEngine';
+
+import {
+  analyzeLifecycle,
+  type LifecycleAnalysis,
+} from '@/lib/market-engines/conditionLifecycleEngine';
+
+import {
+  analyzeRegime,
+  type RegimeAnalysis,
+} from '@/lib/market-engines/regimeEngine';
+
+import {
+  selectStrategy,
+  type StrategySelection,
+} from '@/lib/market-engines/strategySelectionEngine';
+
+import {
+  analyzeTradeQuality,
+  type TradeQualityAnalysis,
+} from '@/lib/market-engines/tradeQualityEngine';
+
+import {
+  rankOpportunity,
+  type OpportunityRanking,
+} from '@/lib/market-engines/opportunityRankingEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -109,6 +147,11 @@ type ScanCandidate = {
   blendedProbability:
     ReturnType<typeof blendProbabilities> | null;
 
+  finalProbabilityBias:
+  | 'long'
+  | 'short'
+  | 'neutral';
+
   contextFingerprint: string;
 
   cycleAnalysis: CycleAnalysis;
@@ -117,7 +160,21 @@ type ScanCandidate = {
   CyclePhaseResolution;
 
   cycleForecast:
-  CycleForecast;
+    CycleForecast;
+
+  regimeAnalysis: RegimeAnalysis;
+
+  strategySelection: StrategySelection;
+
+  tradeQualityAnalysis: TradeQualityAnalysis;
+
+  opportunityRanking: OpportunityRanking;
+  
+    timeDecayAnalysis:
+    TimeDecayAnalysis;
+
+  lifecycleAnalysis:
+    LifecycleAnalysis;
   conditions: {
     biasAligned: boolean;
     volatilityExpansion: boolean;
@@ -292,8 +349,28 @@ const conflictResolution = resolveConflicts(
   momentumAnalysis,
 );
 
+const timeframeContext =
+  buildTimeframeContext('5m');
+
+const syntheticConditionAgeBars =
+  symbol.length + 2;
+
+const timeDecayAnalysis =
+  analyzeTimeDecay(
+    syntheticConditionAgeBars,
+    timeframeContext.averageConditionLifeBars,
+  );
+
+const lifecycleAnalysis =
+  analyzeLifecycle(
+    syntheticConditionAgeBars,
+    timeframeContext.averageConditionLifeBars,
+  );
+
 const probabilityContext: ScannerProbabilityContext = {
   symbol,
+
+  timeframe: 'synthetic',
 
   trendState: trendAnalysis.trendState,
   trendDirection: trendAnalysis.trendDirection,
@@ -335,17 +412,10 @@ const contextFingerprint =
     probabilityContext,
   );
 
-  const historicalOutcome =
-  probabilityRepository[
-    contextFingerprint
-  ];
-
-  const historicalProbability =
-  historicalOutcome
-    ? calculateHistoricalProbability(
-        historicalOutcome,
-      )
-    : null;
+const historicalProbability =
+  loadHistoricalProbability(
+    contextFingerprint,
+  );
 
 const blendedProbability =
   historicalProbability
@@ -374,6 +444,31 @@ const cycleForecast =
     cycleAnalysis,
     cyclePhaseResolution,
   );
+
+  const regimeAnalysis =
+  analyzeRegime({
+    trend: trendAnalysis,
+    momentum: momentumAnalysis,
+    liquidity: liquidityAnalysis,
+    structure: marketStructureAnalysis,
+    cycle: cycleAnalysis,
+  });
+
+  const strategySelection =
+  selectStrategy({
+    regime: regimeAnalysis,
+    cycle: cycleAnalysis,
+    divergenceLocation:
+      divergenceLocationAnalysis,
+  });
+
+  const tradeQualityAnalysis =
+  analyzeTradeQuality({
+    probability: probabilityEstimate,
+    cycle: cycleAnalysis,
+    regime: regimeAnalysis,
+    strategy: strategySelection,
+  });
 
   const liquidityMapped =
     liquidityAnalysis.liquidityScore >= 50 ||
@@ -455,13 +550,83 @@ if (
   confidenceScore -= 5;
 }
 
+if (
+  timeDecayAnalysis.setupFresh
+) {
+  confidenceScore += 5;
+}
+
+if (
+  timeDecayAnalysis.setupStale
+) {
+  confidenceScore -= 5;
+}
+
+if (
+  timeDecayAnalysis.setupExpired
+) {
+  confidenceScore -= 15;
+}
+
+if (
+  regimeAnalysis.trendFriendly
+) {
+  confidenceScore += 5;
+}
+
+if (
+  regimeAnalysis.cautionRequired
+) {
+  confidenceScore -= 5;
+}
+
+if (
+  strategySelection.strategyConfidence ===
+  'high'
+) {
+  confidenceScore += 5;
+}
+
+if (
+  strategySelection.strategyType ===
+  'stand_aside'
+) {
+  confidenceScore -= 20;
+}
+
+if (
+  tradeQualityAnalysis.qualityGrade === 'A+' ||
+  tradeQualityAnalysis.qualityGrade === 'A'
+) {
+  confidenceScore += 5;
+}
+
+if (
+  tradeQualityAnalysis.qualityGrade === 'avoid'
+) {
+  confidenceScore -= 25;
+}
+
   confidenceScore = Math.max(
   0,
   Math.min(100, confidenceScore),
   );
 
+const opportunityRanking =
+  rankOpportunity({
+    confidenceScore,
+    probability: probabilityEstimate,
+    tradeQuality: tradeQualityAnalysis,
+    cycleForecast,
+    regime: regimeAnalysis,
+  });
+
+const finalProbabilityBias =
+  blendedProbability?.probabilityBias ??
+  probabilityEstimate.probabilityBias;
+
 let tradeSide: 'long' | 'short' =
-  probabilityEstimate.probabilityBias === 'short'
+  finalProbabilityBias === 'short'
     ? 'short'
     : 'long';
 
@@ -481,13 +646,21 @@ let tradeSide: 'long' | 'short' =
 
     historicalProbability,
     blendedProbability,
+    finalProbabilityBias,
     contextFingerprint,
 
     cycleAnalysis,
     cyclePhaseResolution,
     cycleForecast,
 
-      conditions: {
+    timeDecayAnalysis,
+    lifecycleAnalysis,
+    regimeAnalysis,
+    strategySelection,
+    tradeQualityAnalysis,
+    opportunityRanking,
+
+    conditions: {
       biasAligned,
       volatilityExpansion,
       liquidityMapped,
@@ -530,7 +703,11 @@ export async function POST(req: Request) {
 
   const candidates = symbols
     .map(scoreCandidate)
-    .sort((a, b) => b.confidenceScore - a.confidenceScore);
+    .sort(
+  (a, b) =>
+    b.opportunityRanking.opportunityScore -
+    a.opportunityRanking.opportunityScore,
+  );
 
   const topCandidate = candidates[0];
 
