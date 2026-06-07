@@ -6,8 +6,18 @@ import type {
   HistoricalOutcome,
 } from './historicalProbabilityEngine';
 
+import {
+  saveTradeContextOutcome,
+} from './historicalOutcomeRepository';
+
 export interface TradeOutcomeInput {
   contextFingerprint: string;
+
+  symbol?: string;
+
+  timeframe?: string;
+
+  tradeSide?: 'long' | 'short';
 
   won: boolean;
 
@@ -17,6 +27,26 @@ export interface TradeOutcomeInput {
 export function recordTradeOutcome(
   input: TradeOutcomeInput,
 ): HistoricalOutcome {
+  saveTradeContextOutcome({
+    contextFingerprint:
+      input.contextFingerprint,
+
+    symbol:
+      input.symbol ?? 'UNKNOWN',
+
+    timeframe:
+      input.timeframe ?? 'unknown',
+
+    tradeSide:
+      input.tradeSide ?? 'long',
+
+    won:
+      input.won,
+
+    pnlR:
+      input.pnlR,
+  });
+
   const existing =
     probabilityRepository[
       input.contextFingerprint

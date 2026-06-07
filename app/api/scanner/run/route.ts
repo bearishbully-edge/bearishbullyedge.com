@@ -536,7 +536,7 @@ export async function POST(req: Request) {
 
   let executionResult: unknown = null;
 
-  if (autoExecute && topCandidate && topCandidate.confidenceScore >= 80) {
+  if (autoExecute && topCandidate && topCandidate.confidenceScore >= 70) {
     const response = await fetch(
       new URL('/api/trade-executions/create', req.url),
       {

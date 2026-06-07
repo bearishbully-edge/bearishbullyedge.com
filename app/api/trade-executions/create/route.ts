@@ -262,17 +262,27 @@ const { data: journalEntry, error: journalError } = await supabase
   if (
   executionPayload.status === 'closed'
 ) {
-  recordTradeOutcome({
-    contextFingerprint,
+recordTradeOutcome({
+  contextFingerprint,
 
-    won:
-      (executionPayload.pnl ?? 0) > 0,
+  symbol,
 
-    pnlR:
-      Math.abs(
-        executionPayload.pnl ?? 0,
-      ) / 100,
-  });
+  timeframe:
+    'synthetic',
+
+  tradeSide:
+    tradeSide === 'short' || tradeSide === 'sell'
+      ? 'short'
+      : 'long',
+
+  won:
+    (executionPayload.pnl ?? 0) > 0,
+
+  pnlR:
+    Math.abs(
+      executionPayload.pnl ?? 0,
+    ) / 100,
+});
 }
 
   if (journalError || !journalEntry) {
