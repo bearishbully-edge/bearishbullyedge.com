@@ -119,6 +119,11 @@ import {
   type OpportunityRanking,
 } from '@/lib/market-engines/opportunityRankingEngine';
 
+import {
+  evaluateExecutionGate,
+  type ExecutionGateAnalysis,
+} from '@/lib/market-engines/executionGateEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -169,6 +174,9 @@ type ScanCandidate = {
   tradeQualityAnalysis: TradeQualityAnalysis;
 
   opportunityRanking: OpportunityRanking;
+
+  executionGate:
+    ExecutionGateAnalysis;
   
     timeDecayAnalysis:
     TimeDecayAnalysis;
@@ -621,6 +629,21 @@ const opportunityRanking =
     regime: regimeAnalysis,
   });
 
+const executionGate =
+  evaluateExecutionGate({
+    opportunity:
+      opportunityRanking,
+
+    tradeQuality:
+      tradeQualityAnalysis,
+
+    strategy:
+      strategySelection,
+
+    probability:
+      probabilityEstimate,
+  });
+
 const finalProbabilityBias =
   blendedProbability?.probabilityBias ??
   probabilityEstimate.probabilityBias;
@@ -659,6 +682,7 @@ let tradeSide: 'long' | 'short' =
     strategySelection,
     tradeQualityAnalysis,
     opportunityRanking,
+    executionGate,
 
     conditions: {
       biasAligned,
