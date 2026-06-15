@@ -6,7 +6,9 @@ export function buildContextFingerprint(
   context:
     ScannerProbabilityContext,
 ): string {
-  return [
+return [
+    context.symbol,
+    context.timeframe,
     context.trendState,
 
     context.momentumState,

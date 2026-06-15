@@ -7,6 +7,8 @@ import type { DivergenceLocationAnalysis } from './divergenceLocationResolver';
 
 export interface ScannerProbabilityContext {
   symbol: string;
+
+  timeframe: string;
   trendState: TrendAnalysis['trendState'];
   trendDirection: TrendAnalysis['trendDirection'];
   momentumState: MomentumAnalysis['momentumState'];
@@ -32,7 +34,9 @@ export interface ProbabilityEstimate {
 export function buildProbabilityContextKey(
   context: ScannerProbabilityContext,
 ): string {
-  return [
+return [
+    context.symbol,
+    context.timeframe,
     context.trendState,
     context.momentumState,
     context.structureState,

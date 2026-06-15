@@ -10,6 +10,11 @@ export interface BlendedProbability {
   longProbability: number;
   shortProbability: number;
 
+  probabilityBias:
+    | 'long'
+    | 'short'
+    | 'neutral';
+
   confidence:
     | 'low'
     | 'medium'
@@ -22,27 +27,51 @@ export function blendProbabilities(
   current: ProbabilityEstimate,
   historical: HistoricalProbability,
 ): BlendedProbability {
-  const historicalBias =
+  const historicalLongProbability =
     historical.winRate;
 
-  const currentBias =
+  const currentLongProbability =
     current.longProbability;
+
+  const historicalWeight =
+    historical.confidence === 'high'
+      ? 0.55
+      : historical.confidence === 'medium'
+      ? 0.35
+      : 0.15;
+
+  const currentWeight =
+    1 - historicalWeight;
 
   const longProbability =
     Math.round(
-      currentBias * 0.7 +
-      historicalBias * 0.3,
+      currentLongProbability * currentWeight +
+        historicalLongProbability * historicalWeight,
     );
 
   const shortProbability =
     100 - longProbability;
 
+  let probabilityBias:
+    | 'long'
+    | 'short'
+    | 'neutral' = 'neutral';
+
+  if (longProbability >= shortProbability + 8) {
+    probabilityBias = 'long';
+  }
+
+  if (shortProbability >= longProbability + 8) {
+    probabilityBias = 'short';
+  }
+
   return {
     longProbability,
     shortProbability,
+    probabilityBias,
     confidence:
       historical.confidence,
     coachNote:
-      'Probability blended using current context and historical outcomes.',
+      `Blended probability uses current setup plus ${historical.sampleSize} historical samples.`,
   };
 }
