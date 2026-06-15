@@ -125,6 +125,11 @@ import {
 } from '@/lib/market-engines/executionGateEngine';
 
 import {
+  analyzeExpectancy,
+  type ExpectancyAnalysis,
+} from '@/lib/market-engines/expectancyEngine';
+
+import {
   buildSyntheticMultiTimeframeAnalysis,
 } from '@/lib/market-engines/multiTimeframeBuilder';
 
@@ -185,6 +190,9 @@ type ScanCandidate = {
 
   executionGate:
     ExecutionGateAnalysis;
+
+  expectancyAnalysis:
+    ExpectancyAnalysis;
 
   multiTimeframeAnalysis:
   MultiTimeframeAnalysis;
@@ -441,6 +449,11 @@ const historicalProbability =
     contextFingerprint,
   );
 
+const expectancyAnalysis =
+  analyzeExpectancy(
+    historicalProbability,
+  );
+
 const blendedProbability =
   historicalProbability
     ? blendProbabilities(
@@ -607,6 +620,26 @@ if (
 }
 
 if (
+  expectancyAnalysis.expectancyGrade ===
+  'elite'
+) {
+  confidenceScore += 10;
+}
+
+if (
+  expectancyAnalysis.expectancyGrade ===
+  'strong'
+) {
+  confidenceScore += 5;
+}
+
+if (
+  !expectancyAnalysis.positiveExpectancy
+) {
+  confidenceScore -= 10;
+}
+
+if (
   regimeAnalysis.trendFriendly
 ) {
   confidenceScore += 5;
@@ -714,6 +747,7 @@ let tradeSide: 'long' | 'short' =
     tradeQualityAnalysis,
     opportunityRanking,
     executionGate,
+    expectancyAnalysis,
 
     conditions: {
       biasAligned,
