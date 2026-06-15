@@ -124,6 +124,14 @@ import {
   type ExecutionGateAnalysis,
 } from '@/lib/market-engines/executionGateEngine';
 
+import {
+  buildSyntheticMultiTimeframeAnalysis,
+} from '@/lib/market-engines/multiTimeframeBuilder';
+
+import type {
+  MultiTimeframeAnalysis,
+} from '@/lib/market-engines/multiTimeframeEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -177,6 +185,9 @@ type ScanCandidate = {
 
   executionGate:
     ExecutionGateAnalysis;
+
+  multiTimeframeAnalysis:
+  MultiTimeframeAnalysis;
   
     timeDecayAnalysis:
     TimeDecayAnalysis;
@@ -298,6 +309,11 @@ function scoreCandidate(symbol: string): ScanCandidate {
 const trendAnalysis = analyzeTrend(
   buildSyntheticTrendInput(symbol),
 );
+
+const multiTimeframeAnalysis =
+  buildSyntheticMultiTimeframeAnalysis(
+    symbol,
+  );
 
 const marketStructureAnalysis =
   analyzeMarketStructure(
@@ -577,6 +593,20 @@ if (
 }
 
 if (
+  multiTimeframeAnalysis.alignmentScore >=
+  80
+) {
+  confidenceScore += 10;
+}
+
+if (
+  multiTimeframeAnalysis.alignment ===
+  'conflicted'
+) {
+  confidenceScore -= 15;
+}
+
+if (
   regimeAnalysis.trendFriendly
 ) {
   confidenceScore += 5;
@@ -660,6 +690,7 @@ let tradeSide: 'long' | 'short' =
     setupGrade: gradeFromScore(confidenceScore),
     liquidityAnalysis,
     trendAnalysis,
+    multiTimeframeAnalysis,
     marketStructureAnalysis,
     momentumAnalysis,
     divergenceAnalysis,
@@ -737,7 +768,11 @@ export async function POST(req: Request) {
 
   let executionResult: unknown = null;
 
-  if (autoExecute && topCandidate && topCandidate.confidenceScore >= 70) {
+  if (
+  autoExecute &&
+  topCandidate &&
+  topCandidate.executionGate.approved
+  ) {
     const response = await fetch(
       new URL('/api/trade-executions/create', req.url),
       {
