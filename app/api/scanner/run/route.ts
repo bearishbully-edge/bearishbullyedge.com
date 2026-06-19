@@ -133,6 +133,14 @@ import {
   buildSyntheticMultiTimeframeAnalysis,
 } from '@/lib/market-engines/multiTimeframeBuilder';
 
+import {
+  buildSyntheticDeltaOrderFlowAnalysis,
+} from '@/lib/market-engines/deltaOrderFlowBuilder';
+
+import type {
+  DeltaOrderFlowAnalysis,
+} from '@/lib/market-engines/deltaOrderFlowEngine';
+
 import type {
   MultiTimeframeAnalysis,
 } from '@/lib/market-engines/multiTimeframeEngine';
@@ -196,6 +204,9 @@ type ScanCandidate = {
 
   multiTimeframeAnalysis:
   MultiTimeframeAnalysis;
+
+  deltaOrderFlowAnalysis:
+  DeltaOrderFlowAnalysis;
   
     timeDecayAnalysis:
     TimeDecayAnalysis;
@@ -320,6 +331,11 @@ const trendAnalysis = analyzeTrend(
 
 const multiTimeframeAnalysis =
   buildSyntheticMultiTimeframeAnalysis(
+    symbol,
+  );
+
+const deltaOrderFlowAnalysis =
+  buildSyntheticDeltaOrderFlowAnalysis(
     symbol,
   );
 
@@ -716,6 +732,34 @@ let tradeSide: 'long' | 'short' =
     ? 'short'
     : 'long';
 
+const deltaTradeSide:
+  | 'long'
+  | 'short'
+  | 'neutral' =
+  deltaOrderFlowAnalysis.deltaBias === 'bullish'
+    ? 'long'
+    : deltaOrderFlowAnalysis.deltaBias === 'bearish'
+    ? 'short'
+    : 'neutral';
+
+  if (
+    deltaTradeSide === tradeSide
+  ) {
+    confidenceScore += 8;
+  }
+
+  if (
+    deltaOrderFlowAnalysis.absorptionWarning
+  ) {
+    confidenceScore -= 10;
+  }
+
+  if (
+    deltaOrderFlowAnalysis.exhaustionWarning
+  ) {
+    confidenceScore -= 5;
+  }
+
   return {
     symbol,
     tradeSide,
@@ -724,6 +768,7 @@ let tradeSide: 'long' | 'short' =
     liquidityAnalysis,
     trendAnalysis,
     multiTimeframeAnalysis,
+    deltaOrderFlowAnalysis,
     marketStructureAnalysis,
     momentumAnalysis,
     divergenceAnalysis,
