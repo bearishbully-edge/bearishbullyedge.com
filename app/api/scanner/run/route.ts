@@ -694,35 +694,6 @@ if (
   confidenceScore -= 25;
 }
 
-  confidenceScore = Math.max(
-  0,
-  Math.min(100, confidenceScore),
-  );
-
-const opportunityRanking =
-  rankOpportunity({
-    confidenceScore,
-    probability: probabilityEstimate,
-    tradeQuality: tradeQualityAnalysis,
-    cycleForecast,
-    regime: regimeAnalysis,
-  });
-
-const executionGate =
-  evaluateExecutionGate({
-    opportunity:
-      opportunityRanking,
-
-    tradeQuality:
-      tradeQualityAnalysis,
-
-    strategy:
-      strategySelection,
-
-    probability:
-      probabilityEstimate,
-  });
-
 const finalProbabilityBias =
   blendedProbability?.probabilityBias ??
   probabilityEstimate.probabilityBias;
@@ -759,6 +730,35 @@ const deltaTradeSide:
   ) {
     confidenceScore -= 5;
   }
+
+  confidenceScore = Math.max(
+  0,
+  Math.min(100, confidenceScore),
+  );
+
+const opportunityRanking =
+  rankOpportunity({
+    confidenceScore,
+    probability: probabilityEstimate,
+    tradeQuality: tradeQualityAnalysis,
+    cycleForecast,
+    regime: regimeAnalysis,
+  });
+
+const executionGate =
+  evaluateExecutionGate({
+    opportunity:
+      opportunityRanking,
+
+    tradeQuality:
+      tradeQualityAnalysis,
+
+    strategy:
+      strategySelection,
+
+    probability:
+      probabilityEstimate,
+  });
 
   return {
     symbol,
