@@ -172,6 +172,18 @@ import type {
   AccountState,
 } from '@/lib/tradovate/accountStateEngine';
 
+import {
+  loadTradovatePositions,
+} from '@/lib/tradovate/positionLoader';
+
+import {
+  evaluatePositionConflict,
+} from '@/lib/tradovate/positionConflictEngine';
+
+import type {
+  PositionIntelligence,
+} from '@/lib/tradovate/positionStateEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -246,9 +258,15 @@ type ScanCandidate = {
 
   tradovateOrder:
     ReturnType<typeof buildTradovateOrder> | null;
-    
+
   accountState:
     AccountState;
+    
+  positionIntelligence:
+    PositionIntelligence;
+
+  positionConflict:
+    ReturnType<typeof evaluatePositionConflict>;
   
   timeDecayAnalysis:
     TimeDecayAnalysis;
@@ -807,6 +825,9 @@ const executionGate =
   const accountState =
     await loadTradovateAccount();
 
+  const positionIntelligence =
+  await loadTradovatePositions();
+
   const executionPlan =
     buildExecutionPlan({
     symbol,
@@ -839,6 +860,15 @@ const positionSizing =
       executionPlan.riskPerUnit,
   });
 
+  const positionConflict =
+  evaluatePositionConflict(
+    symbol,
+
+    tradeSide,
+
+    positionIntelligence,
+  );
+
   const tradovateRiskGate =
   evaluateRiskGate({
     dailyLossLocked:
@@ -848,7 +878,9 @@ const positionSizing =
       accountState.maxPositionsReached,
 
     economicLockout:
-      !economicRiskClear,
+      !economicRiskClear ||
+
+      positionConflict.oppositeDirection,
   });
 
 const tradovateOrder =
@@ -898,6 +930,8 @@ const tradovateOrder =
     tradovateRiskGate,
     tradovateOrder,
     accountState,
+    positionIntelligence,
+    positionConflict,
     expectancyAnalysis,
 
     conditions: {
