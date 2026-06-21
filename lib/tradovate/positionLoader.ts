@@ -3,19 +3,9 @@ import {
 } from './positionStateEngine';
 
 export async function loadTradovatePositions() {
-  return analyzePositions([
-    {
-      symbol: 'MNQ',
+  /*
+   Tradovate positions endpoint will replace this synthetic fallback.
+  */
 
-      side: 'long',
-
-      quantity: 1,
-
-      averagePrice:
-        21400,
-
-      unrealizedPnL:
-        50,
-    },
-  ]);
+  return analyzePositions([]);
 }

@@ -3,35 +3,36 @@ import {
 } from './accountStateEngine';
 
 export async function loadTradovateAccount() {
-  const account =
-    evaluateAccountState({
-      accountId:
-        'paper-account',
+  /*
+   Tradovate API account call will replace this synthetic fallback.
+  */
 
-      accountBalance:
-        10000,
+  return evaluateAccountState({
+    accountId:
+      'tradovate-live',
 
-      buyingPower:
-        50000,
+    accountBalance:
+      10000,
 
-      dailyPnL:
-        0,
+    buyingPower:
+      50000,
 
-      openPositions:
-        0,
+    dailyPnL:
+      0,
 
-      maxPositionsAllowed:
-        3,
+    openPositions:
+      0,
 
-      dailyLossLimit:
-        500,
+    maxPositionsAllowed:
+      3,
 
-      dailyLossLocked:
-        false,
+    dailyLossLimit:
+      500,
 
-      maxPositionsReached:
-        false,
-    });
+    dailyLossLocked:
+      false,
 
-  return account;
+    maxPositionsReached:
+      false,
+  });
 }
