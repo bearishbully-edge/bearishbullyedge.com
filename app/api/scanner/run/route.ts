@@ -145,6 +145,25 @@ import type {
   MultiTimeframeAnalysis,
 } from '@/lib/market-engines/multiTimeframeEngine';
 
+import {
+  buildExecutionPlan,
+  type ExecutionPlan,
+} from '@/lib/market-engines/executionPlanEngine';
+
+import {
+  calculatePositionSize,
+  type PositionSizingAnalysis,
+} from '@/lib/market-engines/positionSizingEngine';
+
+import {
+  buildTradovateOrder,
+} from '@/lib/tradovate/orderBuilder';
+
+import {
+  evaluateRiskGate,
+  type RiskGateResult,
+} from '@/lib/tradovate/riskGate';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -203,10 +222,22 @@ type ScanCandidate = {
     ExpectancyAnalysis;
 
   multiTimeframeAnalysis:
-  MultiTimeframeAnalysis;
+    MultiTimeframeAnalysis;
 
   deltaOrderFlowAnalysis:
-  DeltaOrderFlowAnalysis;
+    DeltaOrderFlowAnalysis;
+
+  executionPlan:
+    ExecutionPlan;
+
+  positionSizing:
+    PositionSizingAnalysis;
+
+  tradovateRiskGate:
+    RiskGateResult;
+
+  tradovateOrder:
+    ReturnType<typeof buildTradovateOrder> | null;  
   
     timeDecayAnalysis:
     TimeDecayAnalysis;
@@ -760,6 +791,60 @@ const executionGate =
       probabilityEstimate,
   });
 
+  const executionPlan =
+  buildExecutionPlan({
+    symbol,
+
+    tradeSide,
+
+    entryPrice:
+      21450,
+
+    stopDistance:
+      tradeSide === 'long'
+        ? 40
+        : 40,
+
+    targetDistance:
+      tradeSide === 'long'
+        ? 90
+        : 90,
+  });
+
+const positionSizing =
+  calculatePositionSize({
+    accountBalance:
+      10000,
+
+    riskPercent:
+      1,
+
+    riskPerUnit:
+      executionPlan.riskPerUnit,
+  });
+
+const tradovateRiskGate =
+  evaluateRiskGate({
+    dailyLossLocked:
+      false,
+
+    maxPositionsReached:
+      false,
+
+    economicLockout:
+      !economicRiskClear,
+  });
+
+const tradovateOrder =
+  executionGate.approved &&
+  tradovateRiskGate.approved
+    ? buildTradovateOrder(
+        executionPlan,
+        positionSizing,
+        tradeSide,
+      )
+    : null;
+
   return {
     symbol,
     tradeSide,
@@ -792,6 +877,10 @@ const executionGate =
     tradeQualityAnalysis,
     opportunityRanking,
     executionGate,
+    executionPlan,
+    positionSizing,
+    tradovateRiskGate,
+    tradovateOrder,
     expectancyAnalysis,
 
     conditions: {
@@ -848,9 +937,10 @@ export async function POST(req: Request) {
   let executionResult: unknown = null;
 
   if (
-  autoExecute &&
-  topCandidate &&
-  topCandidate.executionGate.approved
+    autoExecute &&
+    topCandidate &&
+    topCandidate.executionGate.approved &&
+    topCandidate.tradovateRiskGate.approved
   ) {
     const response = await fetch(
       new URL('/api/trade-executions/create', req.url),
@@ -865,9 +955,14 @@ export async function POST(req: Request) {
           tradeSide: topCandidate.tradeSide,
           strategyName: 'Scanner Ranked Setup',
           executionMode: 'paper',
-          entryPrice: 21450,
-          stopPrice: topCandidate.tradeSide === 'long' ? 21410 : 21490,
-          targetPrice: topCandidate.tradeSide === 'long' ? 21540 : 21360,
+          entryPrice:
+            topCandidate.executionPlan.entryPrice,
+
+          stopPrice:
+            topCandidate.executionPlan.stopPrice,
+
+          targetPrice:
+            topCandidate.executionPlan.targetPrice,
           exitPrice: topCandidate.tradeSide === 'long' ? 21505 : 21395,
           quantity: 1,
           pnl: topCandidate.confidenceScore >= 80 ? 420 : -180,
