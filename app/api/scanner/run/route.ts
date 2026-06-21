@@ -164,6 +164,14 @@ import {
   type RiskGateResult,
 } from '@/lib/tradovate/riskGate';
 
+import {
+  loadTradovateAccount,
+} from '@/lib/tradovate/accountLoader';
+
+import type {
+  AccountState,
+} from '@/lib/tradovate/accountStateEngine';
+
 export const dynamic = 'force-dynamic';
 
 type ScannerBody = {
@@ -237,9 +245,12 @@ type ScanCandidate = {
     RiskGateResult;
 
   tradovateOrder:
-    ReturnType<typeof buildTradovateOrder> | null;  
+    ReturnType<typeof buildTradovateOrder> | null;
+    
+  accountState:
+    AccountState;
   
-    timeDecayAnalysis:
+  timeDecayAnalysis:
     TimeDecayAnalysis;
 
   lifecycleAnalysis:
@@ -355,7 +366,9 @@ function buildSyntheticMomentumInput(symbol: string) {
   };
 }
 
-function scoreCandidate(symbol: string): ScanCandidate {
+async function scoreCandidate(
+  symbol: string,
+): Promise<ScanCandidate> {
 const trendAnalysis = analyzeTrend(
   buildSyntheticTrendInput(symbol),
 );
@@ -791,8 +804,11 @@ const executionGate =
       probabilityEstimate,
   });
 
+  const accountState =
+    await loadTradovateAccount();
+
   const executionPlan =
-  buildExecutionPlan({
+    buildExecutionPlan({
     symbol,
 
     tradeSide,
@@ -814,7 +830,7 @@ const executionGate =
 const positionSizing =
   calculatePositionSize({
     accountBalance:
-      10000,
+      accountState.accountBalance,
 
     riskPercent:
       1,
@@ -823,13 +839,13 @@ const positionSizing =
       executionPlan.riskPerUnit,
   });
 
-const tradovateRiskGate =
+  const tradovateRiskGate =
   evaluateRiskGate({
     dailyLossLocked:
-      false,
+      accountState.dailyLossLocked,
 
     maxPositionsReached:
-      false,
+      accountState.maxPositionsReached,
 
     economicLockout:
       !economicRiskClear,
@@ -881,6 +897,7 @@ const tradovateOrder =
     positionSizing,
     tradovateRiskGate,
     tradovateOrder,
+    accountState,
     expectancyAnalysis,
 
     conditions: {
@@ -924,9 +941,13 @@ export async function POST(req: Request) {
 
   const autoExecute = body.autoExecute === true;
 
-  const candidates = symbols
-    .map(scoreCandidate)
-    .sort(
+  const candidates = (
+  await Promise.all(
+    symbols.map(
+      scoreCandidate,
+    ),
+  )
+  ).sort(
   (a, b) =>
     b.opportunityRanking.opportunityScore -
     a.opportunityRanking.opportunityScore,
