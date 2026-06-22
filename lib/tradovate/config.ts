@@ -1,27 +1,21 @@
 export interface TradovateConfig {
   apiBaseUrl: string;
-
   authBaseUrl: string;
-
   clientId: string;
-
   clientSecret: string;
-
   username: string;
-
   password: string;
-
-  environment:
-    | 'demo'
-    | 'live';
+  environment: 'demo' | 'live';
 }
 
 export const tradovateConfig: TradovateConfig = {
   apiBaseUrl:
-    process.env.TRADOVATE_API_URL ?? '',
+    process.env.TRADOVATE_API_URL ??
+    'https://demo.tradovateapi.com/v1',
 
   authBaseUrl:
-    process.env.TRADOVATE_AUTH_URL ?? '',
+    process.env.TRADOVATE_AUTH_URL ??
+    'https://demo.tradovateapi.com/v1',
 
   clientId:
     process.env.TRADOVATE_CLIENT_ID ?? '',
@@ -36,7 +30,7 @@ export const tradovateConfig: TradovateConfig = {
     process.env.TRADOVATE_PASSWORD ?? '',
 
   environment:
-    (process.env.TRADOVATE_ENV ??
-      'demo') as
-      'demo' | 'live',
+    (process.env.TRADOVATE_ENV ?? 'demo') as
+      | 'demo'
+      | 'live',
 };

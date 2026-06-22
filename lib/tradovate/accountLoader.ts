@@ -2,14 +2,24 @@ import {
   evaluateAccountState,
 } from './accountStateEngine';
 
+import {
+  discoverAccounts,
+} from './accountDiscovery';
+
 export async function loadTradovateAccount() {
-  /*
-   Tradovate API account call will replace this synthetic fallback.
-  */
+  const accounts =
+    await discoverAccounts();
+
+  const account =
+    accounts.find(
+      (item) => item.active,
+    ) ?? accounts[0];
 
   return evaluateAccountState({
     accountId:
-      'tradovate-live',
+      account
+        ? String(account.accountId)
+        : 'tradovate-live',
 
     accountBalance:
       10000,
