@@ -6,6 +6,8 @@ import {
   runTradovateHealthCheck,
 } from '@/lib/tradovate/healthCheckService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const report =
